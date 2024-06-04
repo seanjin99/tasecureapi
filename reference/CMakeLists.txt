@@ -17,52 +17,29 @@
 
 cmake_minimum_required(VERSION 3.16)
 
-project(tasecureapi-src)
+project(tasecureapi)
 
-set(CMAKE_CXX_STANDARD 11 CACHE STRING "C++ standard to be used")
-set(CMAKE_C_STANDARD 11 CACHE STRING "C standard to be used")
+option(BUILD_TESTS "Builds and installs the unit tests" ON)
+option(BUILD_DOC   "Build documentation" ON)
 
-set(CMAKE_CXX_FLAGS "-D_GNU_SOURCE -fPIC ${CMAKE_CXX_FLAGS}")
-set(CMAKE_C_FLAGS "-D_GNU_SOURCE -fPIC ${CMAKE_C_FLAGS}")
+if(${BUILD_TESTS})
+    # Download and unpack googletest at configure time
+    include(FetchContent)
+    FetchContent_Declare(
+            googletest
+            GIT_REPOSITORY https://github.com/google/googletest.git
+            GIT_TAG v1.13.0
+    )
 
-if (COVERAGE AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    set(CMAKE_CXX_FLAGS "-g -fprofile-arcs -ftest-coverage ${CMAKE_CXX_FLAGS}")
-    set(CMAKE_C_FLAGS "-g -fprofile-arcs -ftest-coverage ${CMAKE_C_FLAGS}")
-endif ()
+    FetchContent_GetProperties(googletest)
+    if(NOT googletest_POPULATED)
+        FetchContent_Populate(googletest)
+        add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR} EXCLUDE_FROM_ALL)
+    endif()
 
-set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/../cmake" ${CMAKE_MODULE_PATH})
-message("CMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}")
-#include(ClangFormat)
+    set_property(GLOBAL PROPERTY CTEST_TARGETS_ADDED 1)
+    include(CTest)
+    include(GoogleTest)
+endif()
 
-if (DEFINED ENABLE_SOC_KEY_TESTS)
-    set(CMAKE_CXX_FLAGS "-DENABLE_SOC_KEY_TESTS ${CMAKE_CXX_FLAGS}")
-    set(CMAKE_C_FLAGS "-DENABLE_SOC_KEY_TESTS ${CMAKE_C_FLAGS}")
-endif ()
-
-if (DEFINED DISABLE_CENC_TIMING)
-    set(CMAKE_CXX_FLAGS "-DDISABLE_CENC_TIMING ${CMAKE_CXX_FLAGS}")
-    set(CMAKE_C_FLAGS "-DDISABLE_CENC_TIMING ${CMAKE_C_FLAGS}")
-endif ()
-
-add_subdirectory(client)
-add_subdirectory(clientimpl)
-add_subdirectory(taimpl)
-add_subdirectory(util)
-
-# 'make install' to the correct locations (provided by GNUInstallDirs).
-include(GNUInstallDirs)
-install(TARGETS saclient EXPORT sa-client-config
-        ARCHIVE DESTINATION lib
-        LIBRARY DESTINATION lib
-        RUNTIME DESTINATION bin
-        )
-
-install(DIRECTORY client/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-
-if (BUILD_TESTS)
-    install(TARGETS saclienttest taimpltest utiltest
-            ARCHIVE DESTINATION lib
-            LIBRARY DESTINATION lib
-            RUNTIME DESTINATION bin
-            )
-endif ()
+add_subdirectory(src)
