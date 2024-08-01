@@ -52,6 +52,9 @@ typedef struct {
     uint8_t c1[SYM_128_KEY_SIZE];
     uint8_t c2[SYM_128_KEY_SIZE];
     uint8_t c3[SYM_128_KEY_SIZE];
+#ifdef HS256_KEY_CONTAINER
+    uint8_t c4[SYM_128_KEY_SIZE];
+#endif //HS256_KEY_CONTAINER
 } key_ladder_inputs_t;
 
 /**

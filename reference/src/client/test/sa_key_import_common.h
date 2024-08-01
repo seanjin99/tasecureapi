@@ -154,6 +154,9 @@ protected:
             std::vector<uint8_t>& c1,
             std::vector<uint8_t>& c2,
             std::vector<uint8_t>& c3,
+#ifdef  HS256_KEY_CONTAINER
+            std::vector<uint8_t>& c4,
+#endif  //HS256_KEY_CONTAINER
             std::vector<uint8_t>& tag);
 
     static std::string generate_header();
@@ -170,6 +173,9 @@ protected:
             std::vector<uint8_t>& c1,
             std::vector<uint8_t>& c2,
             std::vector<uint8_t>& c3,
+#ifdef  HS256_KEY_CONTAINER
+            std::vector<uint8_t>& c4,
+#endif  //HS256_KEY_CONTAINER
             std::vector<uint8_t>& tag);
 
     static void set_key_usage_flags(
@@ -194,7 +200,11 @@ protected:
             sa_rights& key_rights,
             std::vector<uint8_t>& c1,
             std::vector<uint8_t>& c2,
-            std::vector<uint8_t>& c3);
+            std::vector<uint8_t>& c3
+#ifdef HS256_KEY_CONTAINER
+            ,std::vector<uint8_t>& c4
+#endif //HS256_KEY_CONTAINER
+);
 
      static sa_status create_key_container(
             std::string& key_type_string,

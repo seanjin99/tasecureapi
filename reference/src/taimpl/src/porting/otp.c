@@ -266,7 +266,8 @@ static sa_status otp_hw_key_ladder(
     uint8_t root_key[SYM_256_KEY_SIZE];
     do {
         size_t root_key_length = SYM_256_KEY_SIZE;
-        if (root_key_type == UNIQUE) {
+        if (root_key_type == UNIQUE ||
+            root_key_type == UNDEFINED) {
             if (!get_root_key(root_key, &root_key_length)) {
                 ERROR("get_root_key failed");
                 break;
@@ -294,6 +295,7 @@ static sa_status otp_hw_key_ladder(
             break;
         }
 
+#ifndef HS256_KEY_CONTAINER
         status = unwrap_aes_ecb_internal(k1, c1, AES_BLOCK_SIZE, root_key, root_key_length);
         if (status != SA_STATUS_OK) {
             ERROR("unwrap_aes_ecb_internal failed");
@@ -311,7 +313,25 @@ static sa_status otp_hw_key_ladder(
             ERROR("unwrap_aes_ecb_internal failed");
             break;
         }
+#else  //HS256_KEY_CONTAINER
+        status = unwrap_aes_ecb_internal(k2, c1, AES_BLOCK_SIZE, root_key, root_key_length);
+        if (status != SA_STATUS_OK) {
+            ERROR("unwrap_aes_ecb_internal failed");
+            break;
+        }
 
+        status = unwrap_aes_ecb_internal(k1, c2, AES_BLOCK_SIZE, k2, k2_length);
+        if (status != SA_STATUS_OK) {
+            ERROR("unwrap_aes_ecb_internal failed");
+            break;
+        }
+
+        status = unwrap_aes_ecb_internal(derived, c3, AES_BLOCK_SIZE, k1, k1_length);
+        if (status != SA_STATUS_OK) {
+            ERROR("unwrap_aes_ecb_internal failed");
+            break;
+        }
+#endif //HS256_KEY_CONTAINER
         status = SA_STATUS_OK;
     } while (false);
 

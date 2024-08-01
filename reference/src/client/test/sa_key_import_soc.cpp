@@ -48,6 +48,9 @@ namespace {
         auto c1 = random(AES_BLOCK_SIZE);
         auto c2 = random(AES_BLOCK_SIZE);
         auto c3 = random(AES_BLOCK_SIZE);
+#ifdef  HS256_KEY_CONTAINER
+        auto c4 = random(AES_BLOCK_SIZE);
+#endif  //HS256_KEY_CONTAINER
 
         auto curve = static_cast<sa_elliptic_curve>(0);
         std::vector<uint8_t> clear_key;
@@ -67,7 +70,11 @@ namespace {
         sa_rights key_rights;
         auto key = create_uninitialized_sa_key();
         sa_status status = import_key(key.get(), soc_container_version, root_key_type, key_type_string, key_type,
-                secapi_version, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3);
+                secapi_version, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3
+#ifdef  HS256_KEY_CONTAINER
+                c4
+#endif  //HS256_KEY_CONTAINER
+                );
         if (status == SA_STATUS_OPERATION_NOT_SUPPORTED)
             GTEST_SKIP() << "key type, key size, or curve not supported";
 
@@ -114,11 +121,18 @@ namespace {
         auto c1 = random(AES_BLOCK_SIZE);
         auto c2 = random(AES_BLOCK_SIZE);
         auto c3 = random(AES_BLOCK_SIZE);
+#ifdef  HS256_KEY_CONTAINER
+        auto c4 = random(AES_BLOCK_SIZE);
+#endif  //HS256_KEY_CONTAINER
         sa_rights key_rights;
 
         auto key = create_uninitialized_sa_key();
         sa_status const status = import_key(key.get(), SOC_CONTAINER_VERSION, UNIQUE_STR, key_type, SA_KEY_TYPE_SYMMETRIC,
-                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3);
+                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3
+#ifdef  HS256_KEY_CONTAINER
+                c4
+#endif  //HS256_KEY_CONTAINER
+                );
         if (status == SA_STATUS_OPERATION_NOT_SUPPORTED)
             GTEST_SKIP() << "key type, key size, or curve not supported";
 
@@ -134,11 +148,18 @@ namespace {
         auto c1 = random(AES_BLOCK_SIZE);
         auto c2 = random(AES_BLOCK_SIZE);
         auto c3 = random(AES_BLOCK_SIZE);
+#ifdef  HS256_KEY_CONTAINER
+        auto c4 = random(AES_BLOCK_SIZE);
+#endif  //HS256_KEY_CONTAINER
         sa_rights key_rights;
 
         auto key = create_uninitialized_sa_key();
         sa_status const status = import_key(key.get(), SOC_CONTAINER_VERSION, UNIQUE_STR, key_type, SA_KEY_TYPE_SYMMETRIC,
-                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3);
+                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3
+#ifdef  HS256_KEY_CONTAINER
+                c4
+#endif  //HS256_KEY_CONTAINER
+                );
         if (status == SA_STATUS_OPERATION_NOT_SUPPORTED)
             GTEST_SKIP() << "key type, key size, or curve not supported";
 
@@ -154,11 +175,18 @@ namespace {
         auto c1 = random(AES_BLOCK_SIZE);
         auto c2 = random(AES_BLOCK_SIZE);
         auto c3 = random(AES_BLOCK_SIZE);
+#ifdef  HS256_KEY_CONTAINER
+        auto c4 = random(AES_BLOCK_SIZE);
+#endif  //HS256_KEY_CONTAINER
         sa_rights key_rights;
 
         auto key = create_uninitialized_sa_key();
         sa_status const status = import_key(key.get(), SOC_CONTAINER_VERSION, UNIQUE_STR, key_type, SA_KEY_TYPE_SYMMETRIC,
-                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3);
+                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3
+#ifdef  HS256_KEY_CONTAINER
+                c4
+#endif  //HS256_KEY_CONTAINER
+                );
         if (status == SA_STATUS_OPERATION_NOT_SUPPORTED)
             GTEST_SKIP() << "key type, key size, or curve not supported";
 
@@ -174,11 +202,18 @@ namespace {
         auto c1 = random(AES_BLOCK_SIZE);
         auto c2 = random(AES_BLOCK_SIZE);
         auto c3 = random(AES_BLOCK_SIZE);
+#ifdef  HS256_KEY_CONTAINER
+        auto c4 = random(AES_BLOCK_SIZE);
+#endif  //HS256_KEY_CONTAINER
         sa_rights key_rights;
 
         auto key = create_uninitialized_sa_key();
         sa_status const status = import_key(key.get(), 0, UNIQUE_STR, key_type, SA_KEY_TYPE_SYMMETRIC, 0, clear_key, iv,
-                key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3);
+                key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3
+#ifdef  HS256_KEY_CONTAINER
+                c4
+#endif  //HS256_KEY_CONTAINER
+                );
         if (status == SA_STATUS_OPERATION_NOT_SUPPORTED)
             GTEST_SKIP() << "key type, key size, or curve not supported";
 
@@ -194,11 +229,18 @@ namespace {
         auto c1 = random(AES_BLOCK_SIZE);
         auto c2 = random(AES_BLOCK_SIZE);
         auto c3 = random(AES_BLOCK_SIZE);
+#ifdef  HS256_KEY_CONTAINER
+        auto c4 = random(AES_BLOCK_SIZE);
+#endif  //HS256_KEY_CONTAINER
         sa_rights key_rights;
 
         auto key = create_uninitialized_sa_key();
         sa_status const status = import_key(key.get(), SOC_CONTAINER_VERSION, UNIQUE_STR, key_type, SA_KEY_TYPE_SYMMETRIC,
-                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3);
+                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3
+#ifdef  HS256_KEY_CONTAINER
+                c4
+#endif  //HS256_KEY_CONTAINER
+                );
         if (status == SA_STATUS_OPERATION_NOT_SUPPORTED)
             GTEST_SKIP() << "key type, key size, or curve not supported";
 
@@ -214,11 +256,18 @@ namespace {
         auto iv = random(GCM_IV_LENGTH);
         auto c2 = random(AES_BLOCK_SIZE);
         auto c3 = random(AES_BLOCK_SIZE);
+#ifdef  HS256_KEY_CONTAINER
+        auto c4 = random(AES_BLOCK_SIZE);
+#endif  //HS256_KEY_CONTAINER
         sa_rights key_rights;
 
         auto key = create_uninitialized_sa_key();
         sa_status const status = import_key(key.get(), SOC_CONTAINER_VERSION, UNIQUE_STR, key_type, SA_KEY_TYPE_SYMMETRIC,
-                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3);
+                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3
+#ifdef  HS256_KEY_CONTAINER
+                c4
+#endif  //HS256_KEY_CONTAINER
+                );
         if (status == SA_STATUS_OPERATION_NOT_SUPPORTED)
             GTEST_SKIP() << "key type, key size, or curve not supported";
 
@@ -234,11 +283,18 @@ namespace {
         auto iv = random(GCM_IV_LENGTH);
         auto c1 = random(AES_BLOCK_SIZE);
         auto c3 = random(AES_BLOCK_SIZE);
+#ifdef  HS256_KEY_CONTAINER
+        auto c4 = random(AES_BLOCK_SIZE);
+#endif  //HS256_KEY_CONTAINER
         sa_rights key_rights;
 
         auto key = create_uninitialized_sa_key();
         sa_status const status = import_key(key.get(), SOC_CONTAINER_VERSION, UNIQUE_STR, key_type, SA_KEY_TYPE_SYMMETRIC,
-                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3);
+                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3
+#ifdef  HS256_KEY_CONTAINER
+                c4
+#endif  //HS256_KEY_CONTAINER
+                );
         if (status == SA_STATUS_OPERATION_NOT_SUPPORTED)
             GTEST_SKIP() << "key type, key size, or curve not supported";
 
@@ -254,11 +310,18 @@ namespace {
         auto iv = random(GCM_IV_LENGTH);
         auto c1 = random(AES_BLOCK_SIZE);
         auto c2 = random(AES_BLOCK_SIZE);
+#ifdef  HS256_KEY_CONTAINER
+        auto c4 = random(AES_BLOCK_SIZE);
+#endif  //HS256_KEY_CONTAINER
         sa_rights key_rights;
 
         auto key = create_uninitialized_sa_key();
         sa_status const status = import_key(key.get(), SOC_CONTAINER_VERSION, UNIQUE_STR, key_type, SA_KEY_TYPE_SYMMETRIC,
-                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3);
+                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3
+#ifdef  HS256_KEY_CONTAINER
+                c4
+#endif  //HS256_KEY_CONTAINER
+                );
         if (status == SA_STATUS_OPERATION_NOT_SUPPORTED)
             GTEST_SKIP() << "key type, key size, or curve not supported";
 
@@ -274,11 +337,18 @@ namespace {
         auto c1 = random(AES_BLOCK_SIZE);
         auto c2 = random(AES_BLOCK_SIZE);
         auto c3 = random(AES_BLOCK_SIZE);
+#ifdef  HS256_KEY_CONTAINER
+        auto c4 = random(AES_BLOCK_SIZE);
+#endif  //HS256_KEY_CONTAINER
         sa_rights key_rights;
 
         auto key = create_uninitialized_sa_key();
         sa_status const status = import_key(key.get(), SOC_CONTAINER_VERSION, UNIQUE_STR, key_type, SA_KEY_TYPE_SYMMETRIC,
-                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3);
+                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3
+#ifdef  HS256_KEY_CONTAINER
+                c4
+#endif  //HS256_KEY_CONTAINER
+                );
         if (status == SA_STATUS_OPERATION_NOT_SUPPORTED)
             GTEST_SKIP() << "key type, key size, or curve not supported";
 
@@ -294,11 +364,18 @@ namespace {
         auto c1 = random(AES_BLOCK_SIZE);
         auto c2 = random(AES_BLOCK_SIZE);
         auto c3 = random(AES_BLOCK_SIZE);
+#ifdef  HS256_KEY_CONTAINER
+        auto c4 = random(AES_BLOCK_SIZE);
+#endif  //HS256_KEY_CONTAINER
         sa_rights key_rights;
 
         auto key = create_uninitialized_sa_key();
         sa_status const status = import_key(key.get(), SOC_CONTAINER_VERSION, UNIQUE_STR, key_type, SA_KEY_TYPE_SYMMETRIC,
-                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3);
+                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3
+#ifdef  HS256_KEY_CONTAINER
+                c4
+#endif  //HS256_KEY_CONTAINER
+                );
         if (status == SA_STATUS_OPERATION_NOT_SUPPORTED)
             GTEST_SKIP() << "key type, key size, or curve not supported";
 
@@ -314,11 +391,18 @@ namespace {
         auto c1 = random(AES_BLOCK_SIZE);
         auto c2 = random(AES_BLOCK_SIZE);
         auto c3 = random(AES_BLOCK_SIZE);
+#ifdef  HS256_KEY_CONTAINER
+        auto c4 = random(AES_BLOCK_SIZE);
+#endif  //HS256_KEY_CONTAINER
         sa_rights key_rights;
 
         auto key = create_uninitialized_sa_key();
         sa_status const status = import_key(key.get(), SOC_CONTAINER_VERSION, UNIQUE_STR, key_type, SA_KEY_TYPE_SYMMETRIC,
-                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3);
+                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3
+#ifdef  HS256_KEY_CONTAINER
+                c4
+#endif  //HS256_KEY_CONTAINER
+                );
         if (status == SA_STATUS_OPERATION_NOT_SUPPORTED)
             GTEST_SKIP() << "key type, key size, or curve not supported";
 
@@ -334,11 +418,18 @@ namespace {
         auto c1 = random(AES_BLOCK_SIZE);
         auto c2 = random(AES_BLOCK_SIZE);
         auto c3 = random(AES_BLOCK_SIZE);
+#ifdef  HS256_KEY_CONTAINER
+        auto c4 = random(AES_BLOCK_SIZE);
+#endif  //HS256_KEY_CONTAINER
         sa_rights key_rights;
 
         auto key = create_uninitialized_sa_key();
         sa_status const status = import_key(key.get(), SOC_CONTAINER_VERSION, UNIQUE_STR, key_type, SA_KEY_TYPE_SYMMETRIC,
-                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3);
+                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3
+#ifdef  HS256_KEY_CONTAINER
+                c4
+#endif  //HS256_KEY_CONTAINER
+                );
         if (status == SA_STATUS_OPERATION_NOT_SUPPORTED)
             GTEST_SKIP() << "key type, key size, or curve not supported";
 
@@ -354,11 +445,18 @@ namespace {
         auto c1 = random(AES_BLOCK_SIZE);
         auto c2 = random(AES_BLOCK_SIZE);
         auto c3 = random(AES_BLOCK_SIZE);
+#ifdef  HS256_KEY_CONTAINER
+        auto c4 = random(AES_BLOCK_SIZE);
+#endif  //HS256_KEY_CONTAINER
         sa_rights key_rights;
 
         auto key = create_uninitialized_sa_key();
         sa_status const status = import_key(key.get(), SOC_CONTAINER_VERSION, UNIQUE_STR, key_type, SA_KEY_TYPE_SYMMETRIC,
-                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3);
+                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3
+#ifdef  HS256_KEY_CONTAINER
+                c4
+#endif  //HS256_KEY_CONTAINER
+                );
         if (status == SA_STATUS_OPERATION_NOT_SUPPORTED)
             GTEST_SKIP() << "key type, key size, or curve not supported";
 
@@ -374,13 +472,20 @@ namespace {
         auto c1 = random(AES_BLOCK_SIZE);
         auto c2 = random(AES_BLOCK_SIZE);
         auto c3 = random(AES_BLOCK_SIZE);
+#ifdef  HS256_KEY_CONTAINER
+        auto c4 = random(AES_BLOCK_SIZE);
+#endif  //HS256_KEY_CONTAINER
 
         std::vector<std::string> entitled_ta_ids = {"157f768f-bad0-470b-929d-0d7dec29d220"};
 
         sa_rights key_rights;
         auto key = create_uninitialized_sa_key();
         sa_status status = import_key(key.get(), SOC_CONTAINER_VERSION, UNIQUE_STR, key_type, SA_KEY_TYPE_SYMMETRIC, 0,
-                clear_key, iv, key_usage, decrypted_key_usage, entitled_ta_ids, key_rights, c1, c2, c3);
+                clear_key, iv, key_usage, decrypted_key_usage, entitled_ta_ids, key_rights, c1, c2, c3
+#ifdef  HS256_KEY_CONTAINER
+                c4
+#endif  //HS256_KEY_CONTAINER
+                );
         if (status == SA_STATUS_OPERATION_NOT_SUPPORTED)
             GTEST_SKIP() << "key type, key size, or curve not supported";
 
@@ -403,6 +508,9 @@ namespace {
         auto c1 = random(AES_BLOCK_SIZE);
         auto c2 = random(AES_BLOCK_SIZE);
         auto c3 = random(AES_BLOCK_SIZE);
+#ifdef  HS256_KEY_CONTAINER
+        auto c4 = random(AES_BLOCK_SIZE);
+#endif  //HS256_KEY_CONTAINER
         int const count = GetParam();
         sa_rights key_rights;
 
@@ -419,7 +527,11 @@ namespace {
 
         auto key = create_uninitialized_sa_key();
         sa_status const status = import_key(key.get(), SOC_CONTAINER_VERSION, UNIQUE_STR, key_type, SA_KEY_TYPE_SYMMETRIC,
-                0, clear_key, iv, key_usage, decrypted_key_usage, entitled_ta_ids, key_rights, c1, c2, c3);
+                0, clear_key, iv, key_usage, decrypted_key_usage, entitled_ta_ids, key_rights, c1, c2, c3
+#ifdef  HS256_KEY_CONTAINER
+                c4
+#endif  //HS256_KEY_CONTAINER
+                );
         if (status == SA_STATUS_OPERATION_NOT_SUPPORTED)
             GTEST_SKIP() << "key type, key size, or curve not supported";
 
@@ -456,11 +568,18 @@ namespace {
         auto c1 = random(AES_BLOCK_SIZE);
         auto c2 = random(AES_BLOCK_SIZE);
         auto c3 = random(AES_BLOCK_SIZE);
+#ifdef  HS256_KEY_CONTAINER
+        auto c4 = random(AES_BLOCK_SIZE);
+#endif  //HS256_KEY_CONTAINER
         sa_rights key_rights;
 
         auto key = create_uninitialized_sa_key();
         sa_status const status = import_key(key.get(), SOC_CONTAINER_VERSION, "test", key_type, SA_KEY_TYPE_SYMMETRIC,
-                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3);
+                0, clear_key, iv, key_usage, decrypted_key_usage, ENTITLED_TA_IDS, key_rights, c1, c2, c3
+#ifdef  HS256_KEY_CONTAINER
+                c4
+#endif  //HS256_KEY_CONTAINER
+                );
         if (status == SA_STATUS_OPERATION_NOT_SUPPORTED)
             GTEST_SKIP() << "key type, key size, or curve not supported";
 

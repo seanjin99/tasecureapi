@@ -498,6 +498,9 @@ std::string SaKeyImportSocBase::generate_encrypted_key(
         std::vector<uint8_t>& c1,
         std::vector<uint8_t>& c2,
         std::vector<uint8_t>& c3,
+#ifdef  HS256_KEY_CONTAINER
+        std::vector<uint8_t>& c4,
+#endif  //HS256_KEY_CONTAINER
         std::vector<uint8_t>& tag) {
 
     std::string alg = "A128GCM";
@@ -539,7 +542,15 @@ std::string SaKeyImportSocBase::generate_encrypted_key(
     if (derived_key == nullptr)
         return "";
 
+#ifndef  HS256_KEY_CONTAINER
     if (!encrypt_aes_gcm_openssl(encrypted_key, key, iv, aad, tag, *derived_key))
+#else    //HS256_KEY_CONTAINER
+    bool pad = false;
+    if (key.size() % AES_BLOCK_SIZE != 0) {
+        pad = true;
+    }
+    if (!encrypt_aes_cbc_openssl(encrypted_key, key, iv, *derived_key, pad))
+#endif   //HS256_KEY_CONTAINER
         return "";
 
     return b64_encode(encrypted_key.data(), encrypted_key.size(), false);
@@ -562,6 +573,9 @@ std::string SaKeyImportSocBase::generate_payload(
         std::vector<uint8_t>& c1,
         std::vector<uint8_t>& c2,
         std::vector<uint8_t>& c3,
+#ifdef HS256_KEY_CONTAINER
+        std::vector<uint8_t>& c4,
+#endif //HS256_KEY_CONTAINER
         std::vector<uint8_t>& tag) {
 
     std::ostringstream oss;
@@ -574,7 +588,11 @@ std::string SaKeyImportSocBase::generate_payload(
         oss << R"(, "keyType": ")" << key_type << "\"";
 
     std::string const encrypted_key = generate_encrypted_key(container_version, root_key_type, key_type, key, iv,
-            key_usage, decrypted_key_usage, entitled_ta_ids, c1, c2, c3, tag);
+            key_usage, decrypted_key_usage, entitled_ta_ids, c1, c2, c3,
+#ifdef HS256_KEY_CONTAINER
+            c4,
+#endif //HS256_KEY_CONTAINER
+            tag);
     if (encrypted_key.empty())
         return "";
 
@@ -608,6 +626,11 @@ std::string SaKeyImportSocBase::generate_payload(
 
     if (!c3.empty())
         oss << R"(, "c3": ")" << b64_encode(c3.data(), c3.size(), false) << "\"";
+
+#ifdef HS256_KEY_CONTAINER
+    if (!c4.empty())
+        oss << R"(, "c4": ")" << b64_encode(c4.data(), c4.size(), false) << "\"";
+#endif //HS256_KEY_CONTAINER
 
     oss << "}";
 
@@ -712,7 +735,7 @@ sa_status SaKeyImportSocBase::create_key_container(
         const sa_key_type clear_key_type,
         std::vector<uint8_t>& clear_key,
         std::string &key_container,
-		const uint8_t secapi_version,
+        const uint8_t secapi_version,
         sa_import_parameters_soc *parameters) {
 
     sa_rights key_rights;
@@ -727,11 +750,18 @@ sa_status SaKeyImportSocBase::create_key_container(
     auto c1 = random(AES_BLOCK_SIZE);
     auto c2 = random(AES_BLOCK_SIZE);
     auto c3 = random(AES_BLOCK_SIZE);
+#ifdef HS256_KEY_CONTAINER
+    auto c4 = random(AES_BLOCK_SIZE);
+#endif //HS256_KEY_CONTAINER
 
     std::vector<uint8_t> tag;
     auto jwt_header = generate_header();
     auto jwt_payload = generate_payload(container_version, root_key_type, key_type_string, clear_key, iv, key_usage,
-            decrypted_key_usage, entitled_ta_ids, c1, c2, c3, tag);
+            decrypted_key_usage, entitled_ta_ids, c1, c2, c3,
+#ifdef HS256_KEY_CONTAINER
+            c4,
+#endif //HS256_KEY_CONTAINER
+            tag);
     key_container = jwt_header + "." + jwt_payload + "." + b64_encode(tag.data(), tag.size(), true);
 
     bool const hmac = memcmp(key_type_string.data(), "HMAC", 4) == 0;
@@ -778,12 +808,19 @@ sa_status SaKeyImportSocBase::import_key(
         sa_rights& key_rights,
         std::vector<uint8_t>& c1,
         std::vector<uint8_t>& c2,
-        std::vector<uint8_t>& c3) {
-
+        std::vector<uint8_t>& c3
+#ifdef HS256_KEY_CONTAINER
+        ,std::vector<uint8_t>& c4
+#endif //HS256_KEY_CONTAINER
+        ) {
     std::vector<uint8_t> tag;
     auto jwt_header = generate_header();
     auto jwt_payload = generate_payload(container_version, root_key_type, key_type, clear_key, iv, key_usage,
-            decrypted_key_usage, entitled_ta_ids, c1, c2, c3, tag);
+            decrypted_key_usage, entitled_ta_ids, c1, c2, c3,
+#ifdef HS256_KEY_CONTAINER
+            c4,
+#endif //HS256_KEY_CONTAINER
+            tag);
     std::string const key_container = jwt_header + "." + jwt_payload + "." + b64_encode(tag.data(), tag.size(), true);
 
     bool const hmac = memcmp(key_type.data(), "HMAC", 4) == 0;
