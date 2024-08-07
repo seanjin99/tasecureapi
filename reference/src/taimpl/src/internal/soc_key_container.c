@@ -183,7 +183,7 @@ static soc_kc_unpacked_t* unpack_soc_kc(
             ERROR("memory_internal_alloc failed");
             break;
         }
-
+        memory_memset_unoptimizable(unpacked->mac, 0, unpacked->mac_length);
         if (!b64_decode(unpacked->mac, &unpacked->mac_length, unpacked->mac_b64, unpacked->mac_b64_length, true)) {
             ERROR("b64_decode failed");
             break;
@@ -418,25 +418,19 @@ static sa_status parse_payload(
 
     payload->key_usage = json_value_as_integer(key_usage_field->value);
 
-#ifndef HS256_KEY_CONTAINER
     if (payload->key_usage == KEY_ONLY) {
         // read decrypted key usage
         const json_key_value_t* decrypted_key_usage_field = json_key_value_find("decryptedKeyUsage", fields,
                 fields_count);
         if (decrypted_key_usage_field == NULL) {
-            ERROR("json_key_value_find failed");
-            return SA_STATUS_INVALID_KEY_FORMAT;
+            // For sake of compatibility,sometimes there is no field of decrypted_key_usage.
+            payload->decrypted_key_usage = 0;
+        } else {
+            payload->decrypted_key_usage = json_value_as_integer(decrypted_key_usage_field->value);
         }
-
-        payload->decrypted_key_usage = json_value_as_integer(decrypted_key_usage_field->value);
     } else {
         payload->decrypted_key_usage = 0;
     }
-#else //HS256_KEY_CONTAINER
-    if (payload->key_usage == KEY_ONLY) {
-        payload->decrypted_key_usage = 0;
-    }
-#endif //HS256_KEY_CONTAINER
 
     // read entitled TA IDs
     json_value_t** entitled_ta_ids = NULL;

@@ -324,7 +324,6 @@ static wrapped_key_t* wrapped_key_create(
         }
 
         // encrypt in-place
-
         if (otp_wrap_aes_cbc(wrapped_key->ciphertext, &derivation_inputs->wrapping_key_inputs,
                     wrapped_key->ciphertext, wrapped_key->cipher_parameters.ciphertext_length,
                     wrapped_key->cipher_parameters.iv) != SA_STATUS_OK) {

@@ -538,7 +538,11 @@ std::string SaKeyImportSocBase::generate_encrypted_key(
         return "";
     }
 
+#ifndef FOUR_STAGE_LADDER
     auto derived_key = derive_test_key_ladder(root_key, c1, c2, c3, empty);
+#else   //FOUR_STAGE_LADDER
+    auto derived_key = derive_test_key_ladder(root_key, c1, c2, c3, c4);
+#endif  //FOUR_STAGE_LADDER
     if (derived_key == nullptr)
         return "";
 
