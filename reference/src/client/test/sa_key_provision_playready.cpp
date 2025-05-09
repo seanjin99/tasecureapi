@@ -321,7 +321,7 @@ static void* readBlob(FILE *fp, size_t *key_size) {
       return NULL;
    }
    *key_size = ftell(fp);
-   void *key = calloc(*key_size, 1);
+   void *key = calloc(1,*key_size);
    if (NULL == key) {
        ERROR("calloc failed");
        return NULL;
@@ -366,7 +366,7 @@ static PlayReadyProvisioning* createPlayreadyBlob(FILE *file_private_key,
    INFO("oem_cert_size: %d",oem_cert_size);
 
    PlayReadyProvisioning *prProvision =
-       (PlayReadyProvisioning*)calloc(sizeof(PlayReadyProvisioning), 1);
+       (PlayReadyProvisioning*)calloc(1,sizeof(PlayReadyProvisioning));
    if (NULL == prProvision) {
       ERROR("calloc failed");
       return NULL;

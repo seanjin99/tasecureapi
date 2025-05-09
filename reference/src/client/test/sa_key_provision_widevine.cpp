@@ -323,7 +323,7 @@ static void* readBlob(FILE *fp, size_t *key_size) {
       return NULL;
    }
    *key_size = ftell(fp);
-   void *key = calloc(*key_size, 1);
+   void *key = calloc(1, *key_size);
    if (NULL == key) {
        ERROR("calloc failed");
        return NULL;
@@ -368,7 +368,7 @@ static WidevineOemProvisioning* createWidevineBlob(FILE *file_private_key,
    INFO("oem_cert_size: %d", oem_cert_size);
 
    WidevineOemProvisioning *wvProvision =
-       (WidevineOemProvisioning*)calloc(sizeof(WidevineOemProvisioning), 1);
+       (WidevineOemProvisioning*)calloc(1,sizeof(WidevineOemProvisioning));
    if (NULL == wvProvision) {
       ERROR("calloc failed");
       return NULL;
