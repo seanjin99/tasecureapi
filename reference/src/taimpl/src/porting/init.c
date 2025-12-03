@@ -17,8 +17,8 @@
  */
 
 #include "porting/init.h"
-#include "porting/memory.h"
 #include "log.h"
+#include "porting/memory.h"
 
 #ifdef MBEDTLS_PLATFORM_MEMORY
 #include "pkcs12_mbedtls.h"

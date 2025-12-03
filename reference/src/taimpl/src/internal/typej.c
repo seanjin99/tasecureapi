@@ -24,10 +24,10 @@
 #include "porting/memory.h"
 #include "rights.h"
 #include "sa_types.h"
+#include "stored_key_internal.h"
 #include "unwrap.h"
 #include <memory.h>
-#include <openssl/evp.h>
-#include <stored_key_internal.h>
+#include <time.h>
 
 #define AES_ECB_NONE "aesEcbNone"
 #define AES_ECB_PKCS5 "aesEcbPkcs5"

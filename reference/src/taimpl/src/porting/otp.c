@@ -20,11 +20,15 @@
 #include "common.h"
 #include "hmac_internal.h"
 #include "log.h"
+#include "mbedtls_header.h"
 #include "pkcs12_mbedtls.h"
 #include "porting/memory.h"
 #include "porting/otp_internal.h"
+#include "root_keystore.h"
 #include "stored_key_internal.h"
 #include <ctype.h>
+#include <string.h>
+#include <stdlib.h>
 
 #define MAX_DEVICE_NAME_LENGTH 16
 
@@ -81,18 +85,6 @@ static bool get_root_key(
         size_t device_name_length = MAX_DEVICE_NAME_LENGTH;
         device_name[0] = '\0';
 
-        // Get keystore path and password from environment or use defaults
-        const char* keystore_path = getenv("ROOT_KEYSTORE");
-        const char* keystore_password = getenv("ROOT_KEYSTORE_PASSWORD");
-
-        if (keystore_path == NULL) {
-            keystore_path = "root_keystore.p12";
-        }
-
-        if (keystore_password == NULL) {
-            keystore_password = DEFAULT_ROOT_KEYSTORE_PASSWORD;
-        }
-
         // Call mbedTLS PKCS#12 parser
         key_length = SYM_128_KEY_SIZE;
         if (!load_pkcs12_secret_key_mbedtls(key, &key_length,
@@ -139,18 +131,6 @@ static bool get_common_root_key(
         char name[MAX_NAME_SIZE];
         size_t name_length = MAX_NAME_SIZE;
         strcpy(name, COMMON_ROOT_NAME);
-
-        // Get keystore path and password from environment or use defaults
-        const char* keystore_path = getenv("ROOT_KEYSTORE");
-        const char* keystore_password = getenv("ROOT_KEYSTORE_PASSWORD");
-
-        if (keystore_path == NULL) {
-            keystore_path = "root_keystore.p12";
-        }
-
-        if (keystore_password == NULL) {
-            keystore_password = "password";
-        }
 
         // Call mbedTLS PKCS#12 parser with specific key name
         key_length = SYM_128_KEY_SIZE;
@@ -216,7 +196,7 @@ static sa_status wrap_aes_cbc(
 
     do {
         // Select cipher type based on key length
-        mbedtls_cipher_type_t cipher_type = (key_length == SYM_128_KEY_SIZE) ?
+        mbedtls_cipher_type_t cipher_type = (key_length == SYM_128_KEY_SIZE) ? 
             MBEDTLS_CIPHER_AES_128_CBC : MBEDTLS_CIPHER_AES_256_CBC;
 
         const mbedtls_cipher_info_t* cipher_info = mbedtls_cipher_info_from_type(cipher_type);
@@ -231,7 +211,7 @@ static sa_status wrap_aes_cbc(
             break;
         }
 
-        ret = mbedtls_cipher_setkey(&ctx, key, key_length * 8, MBEDTLS_ENCRYPT);
+        ret = mbedtls_cipher_setkey(&ctx, key, (int)(key_length * 8), MBEDTLS_ENCRYPT);
         if (ret != 0) {
             ERROR("mbedtls_cipher_setkey failed: -0x%04x", -ret);
             break;
@@ -479,7 +459,7 @@ sa_status unwrap_aes_cbc_internal(
 
     do {
         // Select cipher type based on key length
-        mbedtls_cipher_type_t cipher_type = (key_length == SYM_128_KEY_SIZE) ?
+        mbedtls_cipher_type_t cipher_type = (key_length == SYM_128_KEY_SIZE) ? 
             MBEDTLS_CIPHER_AES_128_CBC : MBEDTLS_CIPHER_AES_256_CBC;
 
         const mbedtls_cipher_info_t* cipher_info = mbedtls_cipher_info_from_type(cipher_type);
@@ -494,7 +474,7 @@ sa_status unwrap_aes_cbc_internal(
             break;
         }
 
-        ret = mbedtls_cipher_setkey(&ctx, key, key_length * 8, MBEDTLS_DECRYPT);
+        ret = mbedtls_cipher_setkey(&ctx, key, (int)(key_length * 8), MBEDTLS_DECRYPT);
         if (ret != 0) {
             ERROR("mbedtls_cipher_setkey failed: -0x%04x", -ret);
             break;
@@ -591,11 +571,10 @@ sa_status unwrap_aes_gcm_internal(
     mbedtls_gcm_init(&ctx);
 
     do {
-        // Select cipher ID based on key length
-        mbedtls_cipher_id_t cipher_id = (key_length == SYM_128_KEY_SIZE) ?
-            MBEDTLS_CIPHER_ID_AES : MBEDTLS_CIPHER_ID_AES;
+        // Select cipher ID based on key length (currently only AES supported)
+        mbedtls_cipher_id_t cipher_id = MBEDTLS_CIPHER_ID_AES;
 
-        int ret = mbedtls_gcm_setkey(&ctx, cipher_id, key, key_length * 8);
+        int ret = mbedtls_gcm_setkey(&ctx, cipher_id, key, (unsigned int)(key_length * 8));
         if (ret != 0) {
             ERROR("mbedtls_gcm_setkey failed: -0x%04x", -ret);
             break;

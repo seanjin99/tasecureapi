@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 Comcast Cable Communications Management, LLC
+ * Copyright 2020-2025 Comcast Cable Communications Management, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -107,10 +107,6 @@ typedef uint64_t sa_handle; // NOLINT
  */
 typedef sa_handle sa_key;
 
-/**
- * SVP buffer opaque data structure.
- */
-typedef sa_handle sa_svp_buffer;
 
 /**
  * Cipher context handle.
@@ -559,13 +555,6 @@ typedef struct {
             size_t offset;
         } clear;
 
-        /** SVP buffer information */
-        struct {
-            /** SVP buffer handle */
-            sa_svp_buffer buffer;
-            /** Current offset into the buffer */
-            size_t offset;
-        } svp;
     } context;
 } sa_buffer;
 
@@ -625,6 +614,30 @@ typedef struct {
      * form. */
     uint64_t object_id;
 } sa_import_parameters_soc;
+
+/**
+ * Provision parameters for securely installing keys into a key container during the provisioning phase.
+ * This structure signals the SecAPI compatibility version and identifies the object_id for key rights management.
+ * Unlike import operations which handle externally-generated keys, provisioning creates and installs keys directly
+ * into secure SoC storage. The structure supports SoC-specific extensibility by allowing vendor-specific fields to
+ * be appended at the end, with the length field reflecting the total extended structure size to maintain forward
+ * and backward compatibility across different SoC implementations and API versions.
+ */
+typedef struct {
+    /** The size of this structure. The most significant size byte is in length[0] and the least
+        significant size byte is in length[1]. */
+    uint8_t length[2];
+
+    /** The SecApi version that the key container is compatible with. Must be either version 2 or version 3. */
+    uint8_t version;
+
+    /** The default key rights to use only if the key container does not contain included key rights. */
+    sa_rights default_rights;
+
+    /** The object ID of the key. The first 8 bytes of the sa_rights.id field will be set to this value in big endian
+     * form. */
+    uint64_t object_id;
+} sa_key_provision_parameters;
 
 /**
  * Key generation parameter for SA_KEY_TYPE_SYMMETRIC.
@@ -1023,14 +1036,6 @@ typedef struct {
 /**
  * Structure to use in sa_svp_buffer_copy_blocks
  */
-typedef struct {
-    /** offset into the output buffer. */
-    size_t out_offset;
-    /** offset into the input buffer. */
-    size_t in_offset;
-    /** numbers of bytes to copy or write. */
-    size_t length;
-} sa_svp_offset;
 
 /** TA Key Type Definition */
 
