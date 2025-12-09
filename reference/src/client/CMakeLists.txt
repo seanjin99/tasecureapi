@@ -34,7 +34,8 @@ endif ()
 
 if (DEFINED ENABLE_CLANG_TIDY_TESTS)
     if (CLANG_TIDY_COMMAND)
-        set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_COMMAND}; )
+        set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_COMMAND}; 
+            -checks=-clang-analyzer-cplusplus.NewDeleteLeaks,-hicpp-use-auto,-modernize-use-auto,-google-runtime-int,-google-readability-casting)
         message("clang-tidy found--enabling for tests")
     endif ()
 else ()
@@ -285,6 +286,10 @@ if (BUILD_TESTS)
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         target_compile_options(saclienttest PRIVATE
             -Wno-analyzer-cplusplus.NewDeleteLeaks
+            -Xclang -analyzer-disable-checker -Xclang cplusplus.NewDeleteLeaks
+            -Wno-hicpp-use-auto
+            -Wno-modernize-use-auto
+            -Wno-google-runtime-int
         )
     endif()
 

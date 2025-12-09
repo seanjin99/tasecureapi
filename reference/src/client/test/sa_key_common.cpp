@@ -572,7 +572,7 @@ bool SaKeyBase::hkdf(
     std::shared_ptr<EVP_PKEY_CTX> const pctx(EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, nullptr), EVP_PKEY_CTX_free);
 
     if (EVP_PKEY_derive_init(pctx.get()) <= 0) {
-        unsigned long err = ERR_get_error();
+        uint64_t err = ERR_get_error();
         char buf[256];
         ERR_error_string_n(err, buf, sizeof(buf));
         ERROR("EVP_PKEY_derive_init failed: %s", buf);
@@ -580,7 +580,7 @@ bool SaKeyBase::hkdf(
     }
 
     if (EVP_PKEY_CTX_set_hkdf_md(pctx.get(), digest_mechanism(digest_algorithm)) <= 0) {
-        unsigned long err = ERR_get_error();
+        uint64_t err = ERR_get_error();
         char buf[256];
         ERR_error_string_n(err, buf, sizeof(buf));
         ERROR("EVP_PKEY_CTX_set_hkdf_md failed: %s", buf);
@@ -590,7 +590,7 @@ bool SaKeyBase::hkdf(
     const unsigned char default_zero = 0;
     const unsigned char* salt_ptr = salt.empty() ? &default_zero : salt.data();
     if (EVP_PKEY_CTX_set1_hkdf_salt(pctx.get(), salt_ptr, static_cast<int>(salt.size())) <= 0) {
-        unsigned long err = ERR_get_error();
+        uint64_t err = ERR_get_error();
         char buf[256];
         ERR_error_string_n(err, buf, sizeof(buf));
         ERROR("EVP_PKEY_CTX_set1_hkdf_salt failed: %s", buf);
@@ -598,7 +598,7 @@ bool SaKeyBase::hkdf(
     }
 
     if (EVP_PKEY_CTX_set1_hkdf_key(pctx.get(), key.data(), static_cast<int>(key.size())) <= 0) {
-        unsigned long err = ERR_get_error();
+        uint64_t err = ERR_get_error();
         char buf[256];
         ERR_error_string_n(err, buf, sizeof(buf));
         ERROR("EVP_PKEY_CTX_set1_hkdf_key failed: %s", buf);
@@ -607,7 +607,7 @@ bool SaKeyBase::hkdf(
 
     const unsigned char* info_ptr = info.empty() ? &default_zero : info.data();
     if (EVP_PKEY_CTX_add1_hkdf_info(pctx.get(), info_ptr, static_cast<int>(info.size())) <= 0) {
-        unsigned long err = ERR_get_error();
+        uint64_t err = ERR_get_error();
         char buf[256];
         ERR_error_string_n(err, buf, sizeof(buf));
         ERROR("EVP_PKEY_CTX_add1_hkdf_info failed: %s", buf);
@@ -616,7 +616,7 @@ bool SaKeyBase::hkdf(
 
     size_t length = out.size();
     if (EVP_PKEY_derive(pctx.get(), out.data(), &length) <= 0) {
-        unsigned long err = ERR_get_error();
+        uint64_t err = ERR_get_error();
         char buf[256];
         ERR_error_string_n(err, buf, sizeof(buf));
         ERROR("EVP_PKEY_derive failed: %s", buf);
