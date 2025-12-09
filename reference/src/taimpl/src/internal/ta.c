@@ -358,6 +358,11 @@ static sa_status ta_invoke_key_import(
                     return SA_STATUS_NULL_PARAMETER;
                 }
 
+                if (params[2].mem_ref_size > sizeof(sa_import_parameters_soc)) {
+                    ERROR("Invalid params[2].mem_ref_size");
+                    return SA_STATUS_INVALID_PARAMETER;
+                }
+
                 memcpy(&parameters_soc, params[2].mem_ref, params[2].mem_ref_size);
                 parameters = &parameters_soc;
             }
@@ -707,6 +712,11 @@ static sa_status ta_invoke_key_derive(
                 return SA_STATUS_NULL_PARAMETER;
             }
 
+            if (params[1].mem_ref_size > sizeof(parameters_root_key_ladder_s)) {
+                ERROR("Invalid params[1].mem_ref_size");
+                return SA_STATUS_INVALID_PARAMETER;
+            }
+
             memcpy(&parameters_root_key_ladder_s, params[1].mem_ref, params[1].mem_ref_size);
             parameters_root_key_ladder.c1 = parameters_root_key_ladder_s.c1;
             parameters_root_key_ladder.c1_length = AES_BLOCK_SIZE;
@@ -723,6 +733,11 @@ static sa_status ta_invoke_key_derive(
             if (params[1].mem_ref == NULL) {
                 ERROR("NULL params[1].mem_ref");
                 return SA_STATUS_NULL_PARAMETER;
+            }
+
+            if (params[1].mem_ref_size > sizeof(parameters_hkdf_s)) {
+                ERROR("Invalid params[1].mem_ref_size");
+                return SA_STATUS_INVALID_PARAMETER;
             }
 
             // params[2].mem_ref and params[3].mem_ref can be null.
@@ -743,6 +758,11 @@ static sa_status ta_invoke_key_derive(
                 return SA_STATUS_NULL_PARAMETER;
             }
 
+            if (params[1].mem_ref_size > sizeof(parameters_concat_s)) {
+                ERROR("Invalid params[1].mem_ref_size");
+                return SA_STATUS_INVALID_PARAMETER;
+            }
+
             // params[2].mem_ref can be null.
             memcpy(&parameters_concat_s, params[1].mem_ref, params[1].mem_ref_size);
             parameters_concat.key_length = parameters_concat_s.key_length;
@@ -757,6 +777,11 @@ static sa_status ta_invoke_key_derive(
             if (params[1].mem_ref == NULL) {
                 ERROR("NULL params[1].mem_ref");
                 return SA_STATUS_NULL_PARAMETER;
+            }
+
+            if (params[1].mem_ref_size > sizeof(parameters_ansi_x963_s)) {
+                ERROR("Invalid params[1].mem_ref_size");
+                return SA_STATUS_INVALID_PARAMETER;
             }
 
             // params[2].mem_ref can be null.
@@ -775,6 +800,11 @@ static sa_status ta_invoke_key_derive(
                 return SA_STATUS_NULL_PARAMETER;
             }
 
+            if (params[1].mem_ref_size > sizeof(parameters_cmac_s)) {
+                ERROR("Invalid params[1].mem_ref_size");
+                return SA_STATUS_INVALID_PARAMETER;
+            }
+
             // params[2].mem_ref can be null.
             memcpy(&parameters_cmac_s, params[1].mem_ref, params[1].mem_ref_size);
             parameters_cmac.key_length = parameters_cmac_s.key_length;
@@ -789,6 +819,11 @@ static sa_status ta_invoke_key_derive(
             if (params[1].mem_ref == NULL) {
                 ERROR("NULL params[1].mem_ref");
                 return SA_STATUS_NULL_PARAMETER;
+            }
+
+            if (params[1].mem_ref_size > sizeof(parameters_netflix)) {
+                ERROR("Invalid params[1].mem_ref_size");
+                return SA_STATUS_INVALID_PARAMETER;
             }
 
             memcpy(&parameters_netflix, params[1].mem_ref, params[1].mem_ref_size);
@@ -1593,7 +1628,7 @@ sa_status ta_invoke_command_handler(
             return SA_STATUS_NULL_PARAMETER;
         }
 
-        sa_uuid uuid;
+        sa_uuid uuid = {0};
         status = transport_authenticate_caller(&uuid);
         if (status != SA_STATUS_OK) {
             ERROR("transport_authenticate_caller failed: %d", status);
@@ -1788,7 +1823,7 @@ sa_status ta_open_session_handler(void** session_context) {
         return SA_STATUS_INTERNAL_ERROR;
     }
 
-    sa_uuid uuid;
+    sa_uuid uuid = {0};
     sa_status status = transport_authenticate_caller(&uuid);
     if (status != SA_STATUS_OK) {
         ERROR("transport_authenticate_caller failed: %d", status);
@@ -1812,7 +1847,7 @@ void ta_close_session_handler(void* session_context) {
     ta_session_context* context = session_context;
 
     do {
-        sa_uuid uuid;
+        sa_uuid uuid = {0};
         sa_status status = transport_authenticate_caller(&uuid);
         if (status != SA_STATUS_OK) {
             ERROR("transport_authenticate_caller failed: %d", status);
