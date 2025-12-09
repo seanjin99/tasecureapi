@@ -406,6 +406,11 @@ static sa_status ta_invoke_key_provision(
             return SA_STATUS_NULL_PARAMETER;
         }
 
+        if (params[2].mem_ref_size > sizeof(sa_key_provision_parameters)) {
+            ERROR("Invalid params[2].mem_ref_size");
+            return SA_STATUS_INVALID_PARAMETER;
+        }
+
         memcpy(&parameters_provision, params[2].mem_ref, params[2].mem_ref_size);
         parameters = &parameters_provision;
     }
