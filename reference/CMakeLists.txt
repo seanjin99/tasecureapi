@@ -23,6 +23,7 @@ option(BUILD_TESTS  "Builds and installs the unit tests" ON)
 option(BUILD_DOC    "Build documentation" ON)
 
 if(${BUILD_TESTS})
+    enable_testing()
     # GoogleTest is configured in src/util/gtest/
     add_subdirectory(src/util/gtest)
 endif()

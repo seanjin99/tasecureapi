@@ -227,14 +227,14 @@ static sa_status fields_to_rights(
             return SA_STATUS_INVALID_PARAMETER;
         }
 
-        rights->id[0] = (parameters_soc->object_id >> 56) & 0xff;
-        rights->id[1] = (parameters_soc->object_id >> 48) & 0xff;
-        rights->id[2] = (parameters_soc->object_id >> 40) & 0xff;
-        rights->id[3] = (parameters_soc->object_id >> 32) & 0xff;
-        rights->id[4] = (parameters_soc->object_id >> 24) & 0xff;
-        rights->id[5] = (parameters_soc->object_id >> 16) & 0xff;
-        rights->id[6] = (parameters_soc->object_id >> 8) & 0xff;
-        rights->id[7] = parameters_soc->object_id & 0xff;
+        rights->id[0] = (char)((parameters_soc->object_id >> 56) & 0xff);
+        rights->id[1] = (char)((parameters_soc->object_id >> 48) & 0xff);
+        rights->id[2] = (char)((parameters_soc->object_id >> 40) & 0xff);
+        rights->id[3] = (char)((parameters_soc->object_id >> 32) & 0xff);
+        rights->id[4] = (char)((parameters_soc->object_id >> 24) & 0xff);
+        rights->id[5] = (char)((parameters_soc->object_id >> 16) & 0xff);
+        rights->id[6] = (char)((parameters_soc->object_id >> 8) & 0xff);
+        rights->id[7] = (char)(parameters_soc->object_id & 0xff);
     }
 
     rights->not_on_or_after = UINT64_MAX;
