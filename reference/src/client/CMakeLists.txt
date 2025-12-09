@@ -282,6 +282,12 @@ if (BUILD_TESTS)
     target_compile_options(saclienttest PRIVATE -Werror -Wall -Wextra -Wno-type-limits -Wno-unused-parameter
             -Wno-deprecated-declarations)
 
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_compile_options(saclienttest PRIVATE
+            -Wno-analyzer-cplusplus.NewDeleteLeaks
+        )
+    endif()
+
     target_include_directories(saclienttest
             PRIVATE
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
