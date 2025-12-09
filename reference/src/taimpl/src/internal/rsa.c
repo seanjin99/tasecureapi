@@ -873,7 +873,8 @@ sa_status rsa_sign_pkcs1v15(
                 ERROR("Hash too large");
                 break;
             }
-            memcpy(hash, in, in_length);
+            const uint8_t* message = (in != NULL) ? in : (const uint8_t*)"";
+            memcpy(hash, message, in_length);
             hash_length = in_length;
         } else {
             // Compute hash

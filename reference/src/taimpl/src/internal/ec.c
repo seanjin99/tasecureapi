@@ -1822,14 +1822,16 @@ sa_status ec_sign_eddsa(
         if (curve == SA_ELLIPTIC_CURVE_ED25519) {
             // ED25519 signing using ed25519-donna
             ed25519_publickey(raw_private_key, public_key);
-            ed25519_sign(in, in_length, raw_private_key, public_key, signature);
+            const uint8_t* message = (in != NULL) ? in : (const uint8_t*)"";
+            ed25519_sign(message, in_length, raw_private_key, public_key, signature);
             *signature_length = 64;
             status = SA_STATUS_OK;
         } else {
             // ED448 signing using libdecaf
             decaf_eddsa_448_keypair_t keypair;
             decaf_ed448_derive_keypair(keypair, raw_private_key);
-            decaf_ed448_keypair_sign(signature, keypair, in, in_length, 0, (const uint8_t*)"", 0);
+            const uint8_t* message = (in != NULL) ? in : (const uint8_t*)"";
+            decaf_ed448_keypair_sign(signature, keypair, message, in_length, 0, (const uint8_t*)"", 0);
             *signature_length = 114; // DECAF_EDDSA_448_SIGNATURE_BYTES
             status = SA_STATUS_OK;
         }

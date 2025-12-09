@@ -1387,14 +1387,18 @@ sa_status symmetric_context_encrypt(
             ERROR("mbedtls_chachapoly_update failed: -0x%04x", -ret);
             return SA_STATUS_INTERNAL_ERROR;
         }
-        *out_length = in_length;
+        if (out_length != NULL) {
+            *out_length = in_length;
+        }
     } else if (context->is_chacha) {
         int ret = mbedtls_chacha20_update(&context->ctx.chacha20_ctx, in_length, in, out);
         if (ret != 0) {
             ERROR("mbedtls_chacha20_update failed: -0x%04x", -ret);
             return SA_STATUS_INTERNAL_ERROR;
         }
-        *out_length = in_length;
+        if (out_length != NULL) {
+            *out_length = in_length;
+        }
     } else if (context->is_gcm) {
         if (!context->gcm_first_update_logged) {
             DEBUG("GCM encrypt update: %zu bytes", in_length);
@@ -1409,11 +1413,15 @@ sa_status symmetric_context_encrypt(
         if (in_length > 0) {
              log_hex_debug("GCM encrypt out", out, in_length > 48 ? 48 : in_length);
         }
-        *out_length = in_length;
+        if (out_length != NULL) {
+            *out_length = in_length;
+        }
     } else if (context->cipher_algorithm == SA_CIPHER_ALGORITHM_AES_ECB_PKCS7) {
         // Buffer input data for ECB PKCS7 to avoid padding intermediate blocks.
         // We only process full blocks here.
-        *out_length = 0;
+        if (out_length != NULL) {
+            *out_length = 0;
+        }
         
         size_t processed = 0;
         while (processed < in_length) {
@@ -1426,18 +1434,23 @@ sa_status symmetric_context_encrypt(
             
             if (context->gcm_buffer_length == 16) {
                 // Encrypt full block without padding
-                int ret = mbedtls_aes_crypt_ecb(&context->ctx.aes_ctx, MBEDTLS_AES_ENCRYPT, context->gcm_buffer, (uint8_t*)out + *out_length);
+                size_t current_offset = (out_length != NULL) ? *out_length : 0;
+                int ret = mbedtls_aes_crypt_ecb(&context->ctx.aes_ctx, MBEDTLS_AES_ENCRYPT, context->gcm_buffer, (uint8_t*)out + current_offset);
                 if (ret != 0) {
                     ERROR("mbedtls update failed: -0x%04x", -ret);
                     return SA_STATUS_INTERNAL_ERROR;
                 }
-                *out_length += 16;
+                if (out_length != NULL) {
+                    *out_length += 16;
+                }
                 context->gcm_buffer_length = 0;
             }
         }
     } else if (context->cipher_algorithm == SA_CIPHER_ALGORITHM_AES_ECB) {
         // AES-ECB uses direct AES API - process block by block
-        *out_length = 0;
+        if (out_length != NULL) {
+            *out_length = 0;
+        }
         for (size_t i = 0; i < in_length; i += AES_BLOCK_SIZE) {
             int ret = mbedtls_aes_crypt_ecb(&context->ctx.aes_ctx, MBEDTLS_AES_ENCRYPT,
                                              (const unsigned char*)in + i, 
@@ -1446,7 +1459,9 @@ sa_status symmetric_context_encrypt(
                 ERROR("mbedtls_aes_crypt_ecb failed: -0x%04x", -ret);
                 return SA_STATUS_INTERNAL_ERROR;
             }
-            *out_length += AES_BLOCK_SIZE;
+            if (out_length != NULL) {
+                *out_length += AES_BLOCK_SIZE;
+            }
         }
     } else {
         // AES-CBC/CTR uses mbedTLS cipher update
