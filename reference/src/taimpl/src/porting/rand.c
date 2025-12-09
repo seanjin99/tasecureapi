@@ -21,10 +21,9 @@
 #include "log.h"
 #include "mbedtls_header.h"
 #include "pkcs12_mbedtls.h"
-#include "log.h"
+#include <stdatomic.h>
 #include <string.h>
 #include <threads.h>
-#include <stdatomic.h>
 
 // Global DRBG context for random number generation
 // CTR-DRBG (Counter mode Deterministic Random Bit Generator)

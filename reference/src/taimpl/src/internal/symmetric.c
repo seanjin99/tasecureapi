@@ -296,7 +296,7 @@ symmetric_context_t* symmetric_create_aes_cbc_encrypt_context(
             break;
         }
         
-        ret = mbedtls_cipher_setkey(&context->ctx.cipher_ctx, key, key_length * 8, MBEDTLS_ENCRYPT);
+        ret = mbedtls_cipher_setkey(&context->ctx.cipher_ctx, key, (int)(key_length * 8), MBEDTLS_ENCRYPT);
         if (ret != 0) {
             ERROR("mbedtls_cipher_setkey failed: -0x%04x", -ret);
             break;
@@ -919,7 +919,7 @@ symmetric_context_t* symmetric_create_aes_cbc_decrypt_context(
             break;
         }
         
-        ret = mbedtls_cipher_setkey(&context->ctx.cipher_ctx, key, key_length * 8, MBEDTLS_DECRYPT);
+        ret = mbedtls_cipher_setkey(&context->ctx.cipher_ctx, key, (int)(key_length * 8), MBEDTLS_DECRYPT);
         if (ret != 0) {
             ERROR("mbedtls_cipher_setkey failed: -0x%04x", -ret);
             break;

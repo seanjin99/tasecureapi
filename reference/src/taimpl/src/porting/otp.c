@@ -27,8 +27,8 @@
 #include "root_keystore.h"
 #include "stored_key_internal.h"
 #include <ctype.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define MAX_DEVICE_NAME_LENGTH 16
 
