@@ -415,7 +415,16 @@ static sa_status ta_invoke_key_provision(
         parameters = &parameters_provision;
     }
 
-    sa_key_type_ta ta_key_type = *(int*)(params[3].mem_ref);
+     sa_key_type_ta ta_key_type = (sa_key_type_ta)ULONG_MAX;
+     if (CHECK_TA_PARAM_IN(param_types[3])) {
+        if (params[3].mem_ref == NULL || params[3].mem_ref_size == 0) {
+            ERROR("NULL params[3].mem_ref");
+            return SA_STATUS_NULL_PARAMETER;
+        }
+
+        ta_key_type = *(int*)(params[3].mem_ref);
+    }
+
     INFO("ta_key_type: %d", ta_key_type);
 
     // Call ta_sa_key_provision directly
