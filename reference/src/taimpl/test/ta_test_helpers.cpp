@@ -89,7 +89,6 @@ namespace ta_test_helpers {
                         if (buffer_type == SA_BUFFER_TYPE_CLEAR) {
                             if (buffer->context.clear.buffer != nullptr)
                                 free(buffer->context.clear.buffer);
-                        } else {
                         }
                     }
 
@@ -105,7 +104,6 @@ namespace ta_test_helpers {
                 ERROR("malloc failed");
                 return nullptr;
             }
-        } else if (buffer_type == SA_BUFFER_TYPE_SVP) {
         }
 
         return buffer;
@@ -121,7 +119,6 @@ namespace ta_test_helpers {
 
         if (buffer_type == SA_BUFFER_TYPE_CLEAR) {
             memcpy(buffer->context.clear.buffer, initial_value.data(), initial_value.size());
-        } else {
         }
 
         return buffer;

@@ -643,7 +643,7 @@ bool SaKeyBase::ansi_x963_kdf(
     out.resize(0);
     for (size_t i = 0; i < key_length;) {
         std::vector<uint8_t> temp;
-        if (!digest(temp, digest_algorithm, key, counter, info))
+        if (!test_helpers_openssl::digest(temp, digest_algorithm, key, counter, info))
             return false;
 
         out.insert(out.end(), temp.begin(), temp.end());

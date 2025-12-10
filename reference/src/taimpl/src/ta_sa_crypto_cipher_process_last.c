@@ -656,12 +656,8 @@ sa_status ta_sa_crypto_cipher_process_last(
         }
 
         if (out != NULL) {
-            if (in->buffer_type == SA_BUFFER_TYPE_CLEAR) {
-                in->context.clear.offset += in_length;
-	    }
-            if (out->buffer_type == SA_BUFFER_TYPE_SVP) {
-                out->context.clear.offset += *bytes_to_process;
-	    }
+            in->context.clear.offset += in_length;
+            out->context.clear.offset += *bytes_to_process;
         }
     } while (false);
 

@@ -41,6 +41,22 @@ if(curve25519_donna_POPULATED)
         -Wno-unused-function
     )
 
+    # Suppress clang static analyzer warnings for external curve25519-donna library
+    include(CheckCCompilerFlag)
+    set(CMAKE_REQUIRED_QUIET TRUE)
+    check_c_compiler_flag("-Wno-analyzer-security-insecure-api-strcpy" COMPILER_SUPPORTS_NO_ANALYZER_STRCPY)
+    if(COMPILER_SUPPORTS_NO_ANALYZER_STRCPY)
+        target_compile_options(curve25519_provider PRIVATE -Wno-analyzer-security-insecure-api-strcpy)
+    endif()
+    check_c_compiler_flag("-Wno-analyzer-deadcode.DeadStores" COMPILER_SUPPORTS_NO_ANALYZER_DEADCODE)
+    if(COMPILER_SUPPORTS_NO_ANALYZER_DEADCODE)
+        target_compile_options(curve25519_provider PRIVATE -Wno-analyzer-deadcode.DeadStores)
+    endif()
+    check_c_compiler_flag("-Wno-analyzer-unix.Malloc" COMPILER_SUPPORTS_NO_ANALYZER_MALLOC)
+    if(COMPILER_SUPPORTS_NO_ANALYZER_MALLOC)
+        target_compile_options(curve25519_provider PRIVATE -Wno-analyzer-unix.Malloc)
+    endif()
+
     set_property(TARGET curve25519_provider PROPERTY C_STANDARD 99)
 
     message(STATUS "curve25519-donna provider configured successfully")

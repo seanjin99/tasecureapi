@@ -108,7 +108,7 @@ static mbedtls_pk_type_t ec_get_pk_type(sa_elliptic_curve curve) {
     }
     // Ed25519, Ed448, X25519, X448 not supported in mbedTLS 2.16.10 via pk_context
     const char* curve_name = ec_curve_name(curve);
-    ERROR("Unsupported curve for pk_type: %d (%s)", curve, curve_name);
+    INFO("Unsupported curve for pk_type: %d (%s)", curve, curve_name);
     return MBEDTLS_PK_NONE;
 }
 

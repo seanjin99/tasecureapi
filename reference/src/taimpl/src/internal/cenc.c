@@ -15,6 +15,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 #include "cenc.h" // NOLINT
 #include "buffer.h"
 #include "common.h"
@@ -69,7 +70,6 @@ static sa_status decrypt(
 
                 // Increment the IV by the number of full blocks just decrypted.
                 (*counter_buffer) = htobe64(be64toh(*counter_buffer) + 1);
-
                 status = symmetric_context_set_iv(symmetric_context, iv, AES_BLOCK_SIZE);
                 if (status != SA_STATUS_OK) {
                     ERROR("symmetric_context_set_iv failed");
@@ -286,7 +286,6 @@ sa_status cenc_process_sample(
                                 ERROR("decrypt failed");
                                 break;
                             }
-
                             offset += block;
                             bytes_left -= block;
                         }
@@ -315,12 +314,12 @@ sa_status cenc_process_sample(
 
         if (status == SA_STATUS_OK) {
             if (sample->in->buffer_type == SA_BUFFER_TYPE_CLEAR) {
-		sample->in->context.clear.offset += offset;
-	    } 
+                sample->in->context.clear.offset += offset;
+            }
 
             if (sample->out->buffer_type == SA_BUFFER_TYPE_CLEAR) {
                 sample->out->context.clear.offset += offset;
-	    }
+	        }
         }
     } while (false);
     if (cipher != NULL)

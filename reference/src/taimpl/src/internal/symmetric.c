@@ -25,9 +25,9 @@
 #include "porting/rand.h"
 #include "sa_types.h"
 #include "stored_key_internal.h"
-#define MBEDTLS_ALLOW_PRIVATE_ACCESS 1
 #include "mbedtls_header.h"
 #include <memory.h>
+#include <stdio.h>
 
 
 struct symmetric_context_s {
@@ -472,7 +472,7 @@ symmetric_context_t* symmetric_create_aes_gcm_encrypt_context(
         context->cipher_mode = SA_CIPHER_MODE_ENCRYPT;
         context->is_gcm = true;
         context->is_chacha = false;
-    context->gcm_first_update_logged = false;
+        context->gcm_first_update_logged = false;
         context->gcm_buffer_length = 0;
         memset(context->gcm_buffer, 0, 16);
 
@@ -1857,7 +1857,7 @@ sa_status symmetric_context_decrypt_last(
 
         // Verify the tag
         if (memcmp(computed_tag, context->gcm_tag, context->gcm_tag_length) != 0) {
-            ERROR("GCM tag verification failed");
+            DEBUG("GCM tag verification failed");
             // Log computed and expected tags (limited length) using DEBUG
             char comp_buf[3 * 16 + 1] = {0};
             char exp_buf[3 * 16 + 1] = {0};
@@ -1867,8 +1867,8 @@ sa_status symmetric_context_decrypt_last(
                 posc += (size_t) snprintf(&comp_buf[posc], sizeof(comp_buf) - posc, "%02x", computed_tag[i]);
                 pose += (size_t) snprintf(&exp_buf[pose], sizeof(exp_buf) - pose, "%02x", context->gcm_tag[i]);
             }
-            ERROR("ta: computed tag: %s", comp_buf);
-            ERROR("ta: expected tag: %s", exp_buf);
+            DEBUG("ta: computed tag: %s", comp_buf);
+            DEBUG("ta: expected tag: %s", exp_buf);
             return SA_STATUS_VERIFICATION_FAILED;
         }
 
@@ -2012,12 +2012,6 @@ sa_status symmetric_context_set_iv(
 
     return SA_STATUS_OK;
 }
-
-#include <stdio.h>
-
-// ... (existing includes)
-
-// ... (existing code)
 
 sa_status symmetric_context_reinit_for_sample(
         const symmetric_context_t* context,

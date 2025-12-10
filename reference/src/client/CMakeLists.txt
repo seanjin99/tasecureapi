@@ -131,6 +131,7 @@ if (BUILD_TESTS)
             test/client_test_helpers.cpp
             test/client_test_helpers.h
             test/environment.cpp
+            test/sa_client_thread_test.cpp
             test/sa_crypto_cipher_common.h
             test/sa_crypto_cipher_common.cpp
             test/sa_crypto_cipher_init.cpp
@@ -264,7 +265,6 @@ if (BUILD_TESTS)
             test/sa_key_unwrap_ec.cpp
             test/sa_key_unwrap_rsa.cpp
             test/sa_crypto_cipher_multiple_thread.cpp
-            test/sa_client_thread_test.cpp
             test/sa_provider_asym_cipher.cpp
             test/sa_process_common_encryption.cpp
             test/sa_process_common_encryption.h
@@ -284,13 +284,27 @@ if (BUILD_TESTS)
             -Wno-deprecated-declarations)
 
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        target_compile_options(saclienttest PRIVATE
-            -Wno-analyzer-cplusplus.NewDeleteLeaks
-            -Xclang -analyzer-disable-checker -Xclang cplusplus.NewDeleteLeaks
-            -Wno-hicpp-use-auto
-            -Wno-modernize-use-auto
-            -Wno-google-runtime-int
-        )
+        # Only suppress analyzer warnings on GitHub Actions CI (not on local macOS builds)
+        if(DEFINED ENV{CI})
+            # GitHub Actions static analyzer needs these suppressions
+            target_compile_options(saclienttest PRIVATE
+                -Xclang -analyzer-disable-checker -Xclang cplusplus.NewDeleteLeaks
+            )
+            # Clang-tidy suppressions (only needed on GitHub Actions)
+            include(CheckCXXCompilerFlag)
+            check_cxx_compiler_flag("-Wno-hicpp-use-auto" COMPILER_SUPPORTS_NO_HICPP_AUTO)
+            if(COMPILER_SUPPORTS_NO_HICPP_AUTO)
+                target_compile_options(saclienttest PRIVATE -Wno-hicpp-use-auto)
+            endif()
+            check_cxx_compiler_flag("-Wno-modernize-use-auto" COMPILER_SUPPORTS_NO_MODERNIZE_AUTO)
+            if(COMPILER_SUPPORTS_NO_MODERNIZE_AUTO)
+                target_compile_options(saclienttest PRIVATE -Wno-modernize-use-auto)
+            endif()
+            check_cxx_compiler_flag("-Wno-google-runtime-int" COMPILER_SUPPORTS_NO_GOOGLE_RUNTIME_INT)
+            if(COMPILER_SUPPORTS_NO_GOOGLE_RUNTIME_INT)
+                target_compile_options(saclienttest PRIVATE -Wno-google-runtime-int)
+            endif()
+        endif()
     endif()
 
     target_include_directories(saclienttest

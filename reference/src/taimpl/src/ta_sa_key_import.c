@@ -139,7 +139,7 @@ static sa_status ta_sa_key_import_ec_private_bytes(
         return SA_STATUS_NULL_PARAMETER;
     }
 
-    // All curves are supported with mbedTLS
+    // All curves are supported
     sa_status status;
     stored_key_t* stored_key = NULL;
     do {
@@ -346,7 +346,6 @@ static sa_status ta_sa_key_import_soc(
 
     return status;
 }
-
 
 static sa_status ta_sa_key_import_typej(
         sa_key* key,

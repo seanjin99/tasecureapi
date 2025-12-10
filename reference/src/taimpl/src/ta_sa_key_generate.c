@@ -120,7 +120,7 @@ static sa_status ta_sa_key_generate_ec(
         return SA_STATUS_NULL_PARAMETER;
     }
 
-    // All curves are supported with mbedTLS
+    // All curves are supported
     sa_status status;
     stored_key_t* stored_key = NULL;
     do {

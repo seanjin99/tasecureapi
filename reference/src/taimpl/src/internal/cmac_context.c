@@ -36,49 +36,60 @@ cmac_context_t* cmac_context_create(const stored_key_t* stored_key) {
         return NULL;
     }
 
-    cmac_context_t* context = memory_internal_alloc(sizeof(cmac_context_t));
-    if (context == NULL) {
-        ERROR("memory_internal_alloc failed");
-        return NULL;
-    }
-    memory_memset_unoptimizable(context, 0, sizeof(cmac_context_t));
-    mbedtls_cipher_init(&context->cipher_ctx);
-
-    const void* key = stored_key_get_key(stored_key);
-    if (key == NULL) {
-        ERROR("stored_key_get_key failed");
-        memory_internal_free(context);
-        return NULL;
-    }
-    size_t key_length = stored_key_get_length(stored_key);
-    if (!key_type_supports_aes(SA_KEY_TYPE_SYMMETRIC, key_length)) {
-        ERROR("Invalid key_length: %zu", key_length);
-        memory_internal_free(context);
-        return NULL;
-    }
+    cmac_context_t* context = NULL;
     const mbedtls_cipher_info_t* cipher_info = NULL;
-    if (key_length == SYM_128_KEY_SIZE)
-        cipher_info = mbedtls_cipher_info_from_type(MBEDTLS_CIPHER_AES_128_ECB);
-    else if (key_length == SYM_256_KEY_SIZE)
-        cipher_info = mbedtls_cipher_info_from_type(MBEDTLS_CIPHER_AES_256_ECB);
-    else {
-        ERROR("Unsupported key length for CMAC: %zu", key_length);
-        memory_internal_free(context);
-        return NULL;
-    }
-    if (mbedtls_cipher_setup(&context->cipher_ctx, cipher_info) != 0) {
-        ERROR("mbedtls_cipher_setup failed");
-        memory_internal_free(context);
-        return NULL;
-    }
-    if (mbedtls_cipher_cmac_starts(&context->cipher_ctx, key, key_length * 8) != 0) {
-        ERROR("mbedtls_cipher_cmac_starts failed");
+
+    do {
+        const void* key = stored_key_get_key(stored_key);
+        if (key == NULL) {
+            ERROR("stored_key_get_key failed");
+            break;
+        }
+
+        size_t key_length = stored_key_get_length(stored_key);
+        if (!key_type_supports_aes(SA_KEY_TYPE_SYMMETRIC, key_length)) {
+            ERROR("Invalid key_length: %zu", key_length);
+            break;
+        }
+
+        if (key_length == SYM_128_KEY_SIZE)
+            cipher_info = mbedtls_cipher_info_from_type(MBEDTLS_CIPHER_AES_128_ECB);
+        else if (key_length == SYM_256_KEY_SIZE)
+            cipher_info = mbedtls_cipher_info_from_type(MBEDTLS_CIPHER_AES_256_ECB);
+        else {
+            ERROR("Unsupported key length for CMAC: %zu", key_length);
+            break;
+        }
+
+        context = memory_internal_alloc(sizeof(cmac_context_t));
+        if (context == NULL) {
+            ERROR("memory_internal_alloc failed");
+            break;
+        }
+
+        memory_memset_unoptimizable(context, 0, sizeof(cmac_context_t));
+        mbedtls_cipher_init(&context->cipher_ctx);
+
+        if (mbedtls_cipher_setup(&context->cipher_ctx, cipher_info) != 0) {
+            ERROR("mbedtls_cipher_setup failed");
+            break;
+        }
+
+        if (mbedtls_cipher_cmac_starts(&context->cipher_ctx, key, key_length * 8) != 0) {
+            ERROR("mbedtls_cipher_cmac_starts failed");
+            break;
+        }
+
+        context->done = false;
+        return context;
+    } while (false);
+
+    if (context != NULL) {
         mbedtls_cipher_free(&context->cipher_ctx);
         memory_internal_free(context);
-        return NULL;
     }
-    context->done = false;
-    return context;
+
+    return NULL;
 }
 
 sa_status cmac_context_update(
@@ -205,7 +216,9 @@ sa_status cmac(
         ERROR("NULL mac");
         return SA_STATUS_NULL_PARAMETER;
     }
-    if ((in1 == NULL && in1_length > 0) || (in2 == NULL && in2_length > 0) || (in3 == NULL && in3_length > 0)) {
+    if ((in1 == NULL && in1_length > 0) ||
+	    (in2 == NULL && in2_length > 0) ||
+		(in3 == NULL && in3_length > 0)) {
         ERROR("NULL input");
         return SA_STATUS_NULL_PARAMETER;
     }

@@ -128,7 +128,7 @@ sa_status sa_crypto_cipher_process(
 
         if (in->buffer_type == SA_BUFFER_TYPE_CLEAR) {
             in->context.clear.offset += cipher_process->in_offset;
-	}
+        }
 
         *bytes_to_process = cipher_process->bytes_to_process;
     } while (false);

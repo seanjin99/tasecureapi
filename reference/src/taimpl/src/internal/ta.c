@@ -403,6 +403,11 @@ static sa_status ta_invoke_key_provision(
         return SA_STATUS_INVALID_PARAMETER;
     }
 
+    if (key_provision_ta->key_format != SA_KEY_FORMAT_PROVISION_TA) {
+        ERROR("Invalid key format");
+        return SA_STATUS_INVALID_PARAMETER;
+    }
+
     sa_key_provision_parameters parameters_provision;
     void* parameters = NULL;
     if (CHECK_TA_PARAM_IN(param_types[2])) {
@@ -428,13 +433,15 @@ static sa_status ta_invoke_key_provision(
         }
 
         ta_key_type = *(int*)(params[3].mem_ref);
+        INFO("ta_key_type: %d", ta_key_type);
     }
 
-    INFO("ta_key_type: %d", ta_key_type);
 
     // Call ta_sa_key_provision directly
     // params[1].mem_ref contains the full provisioning structure (WidevineOemProvisioning, etc.)
-    sa_status status = ta_sa_key_provision(ta_key_type, params[1].mem_ref, params[1].mem_ref_size,
+	const void*  provisioningObject = params[1].mem_ref;
+    const size_t provisioningObjectLen = params[1].mem_ref_size;
+    sa_status status = ta_sa_key_provision(ta_key_type, provisioningObject, provisioningObjectLen,
         parameters, context->client, uuid);
 
     if (SA_STATUS_OK != status) {
@@ -1265,11 +1272,6 @@ static sa_status ta_invoke_crypto_cipher_process(
         crypto_cipher_process->in_offset = in.context.clear.offset;
     }
 
-    // clang-format off
-    if (params[1].mem_ref != NULL) {
-    }
-
-    // clang-format on
     return status;
 }
 

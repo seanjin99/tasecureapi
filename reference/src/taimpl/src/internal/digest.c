@@ -22,6 +22,22 @@
 #include "log.h"
 #include "stored_key_internal.h"
 
+static mbedtls_md_type_t get_mbedtls_md_type(sa_digest_algorithm digest_algorithm) {
+    switch (digest_algorithm) {
+        case SA_DIGEST_ALGORITHM_SHA1:
+            return MBEDTLS_MD_SHA1;
+        case SA_DIGEST_ALGORITHM_SHA256:
+            return MBEDTLS_MD_SHA256;
+        case SA_DIGEST_ALGORITHM_SHA384:
+            return MBEDTLS_MD_SHA384;
+        case SA_DIGEST_ALGORITHM_SHA512:
+            return MBEDTLS_MD_SHA512;
+        default:
+            ERROR("Unknown digest algorithm");
+            return MBEDTLS_MD_NONE;
+    }
+}
+
 sa_status digest_sha(
         void* out,
         size_t* out_length,
@@ -72,23 +88,9 @@ sa_status digest_sha(
     
     do {
         // Get the message digest info for the algorithm
-        mbedtls_md_type_t md_type;
-        switch (digest_algorithm) {
-            case SA_DIGEST_ALGORITHM_SHA1:
-                md_type = MBEDTLS_MD_SHA1;
-                break;
-            case SA_DIGEST_ALGORITHM_SHA256:
-                md_type = MBEDTLS_MD_SHA256;
-                break;
-            case SA_DIGEST_ALGORITHM_SHA384:
-                md_type = MBEDTLS_MD_SHA384;
-                break;
-            case SA_DIGEST_ALGORITHM_SHA512:
-                md_type = MBEDTLS_MD_SHA512;
-                break;
-            default:
-                ERROR("Unknown digest algorithm");
-                break;
+        mbedtls_md_type_t md_type = get_mbedtls_md_type(digest_algorithm);
+        if (md_type == MBEDTLS_MD_NONE) {
+            break;
         }
         
         const mbedtls_md_info_t* md_info = mbedtls_md_info_from_type(md_type);
@@ -182,23 +184,9 @@ sa_status digest_key(
         size_t key_length = stored_key_get_length(stored_key);
 
         // Get the message digest info for the algorithm
-        mbedtls_md_type_t md_type;
-        switch (digest_algorithm) {
-            case SA_DIGEST_ALGORITHM_SHA1:
-                md_type = MBEDTLS_MD_SHA1;
-                break;
-            case SA_DIGEST_ALGORITHM_SHA256:
-                md_type = MBEDTLS_MD_SHA256;
-                break;
-            case SA_DIGEST_ALGORITHM_SHA384:
-                md_type = MBEDTLS_MD_SHA384;
-                break;
-            case SA_DIGEST_ALGORITHM_SHA512:
-                md_type = MBEDTLS_MD_SHA512;
-                break;
-            default:
-                ERROR("Unknown digest algorithm");
-                break;
+        mbedtls_md_type_t md_type = get_mbedtls_md_type(digest_algorithm);
+        if (md_type == MBEDTLS_MD_NONE) {
+            break;
         }
         
         const mbedtls_md_info_t* md_info = mbedtls_md_info_from_type(md_type);
