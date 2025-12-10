@@ -140,19 +140,10 @@ bool rand_bytes(void* out, size_t out_length) {
         return false;
     }
 
-    // Protect global ctr_drbg context from concurrent access
-    // This prevents race conditions when 255+ threads call this simultaneously
-    if (mtx_lock(&rand_mutex) != thrd_success) {
-        ERROR("Failed to lock rand_mutex");
-        return false;
-    }
-
+    // With MBEDTLS_THREADING_C enabled, mbedtls_ctr_drbg_random() has internal
+    // mutex protection, so no need for application-level locking here.
+    // Removing rand_mutex here eliminates lock contention with 255+ concurrent threads.
     int ret = mbedtls_ctr_drbg_random(&ctr_drbg, out, out_length);
-    
-    if (mtx_unlock(&rand_mutex) != thrd_success) {
-        ERROR("Failed to unlock rand_mutex");
-        return false;
-    }
 
     if (ret != 0) {
         ERROR("mbedtls_ctr_drbg_random failed: -0x%04x", -ret);

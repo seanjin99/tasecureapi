@@ -29,6 +29,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#include <threads.h>
 
 #define MAX_DEVICE_NAME_LENGTH 16
 
@@ -63,14 +64,40 @@ static uint64_t convert_str_to_int(
     return value;
 }
 
+// Thread-safe initialization for root key
+static size_t root_key_length = 0;
+static uint8_t root_key_cache[SYM_128_KEY_SIZE];
+static bool root_key_init_failed = false;
+static once_flag root_key_once = ONCE_FLAG_INIT;
+
+static void init_root_key(void) {
+    char device_name[MAX_DEVICE_NAME_LENGTH];
+    size_t device_name_length = MAX_DEVICE_NAME_LENGTH;
+    device_name[0] = '\0';
+
+    // Call mbedTLS PKCS#12 parser
+    root_key_length = SYM_128_KEY_SIZE;
+    if (!load_pkcs12_secret_key_mbedtls(root_key_cache, &root_key_length,
+                                       device_name, &device_name_length)) {
+        ERROR("load_pkcs12_secret_key_mbedtls failed");
+        root_key_init_failed = true;
+        return;
+    }
+
+    device_id = convert_str_to_int(device_name, device_name_length);
+    if (device_id == 0) {
+        ERROR("Invalid device ID in keystore");
+        root_key_init_failed = true;
+        return;
+    }
+}
+
 // mbedTLS implementation
 static bool get_root_key(
         void* root_key,
-        size_t* root_key_length) {
-    static size_t key_length = 0;
-    static uint8_t key[SYM_128_KEY_SIZE];
+        size_t* root_key_length_param) {
 
-    if (root_key_length == NULL) {
+    if (root_key_length_param == NULL) {
         ERROR("NULL root_key_length");
         return false;
     }
@@ -80,44 +107,51 @@ static bool get_root_key(
         return false;
     }
 
-    if (key_length == 0) {
-        char device_name[MAX_DEVICE_NAME_LENGTH];
-        size_t device_name_length = MAX_DEVICE_NAME_LENGTH;
-        device_name[0] = '\0';
+    // Thread-safe one-time initialization
+    call_once(&root_key_once, init_root_key);
 
-        // Call mbedTLS PKCS#12 parser
-        key_length = SYM_128_KEY_SIZE;
-        if (!load_pkcs12_secret_key_mbedtls(key, &key_length,
-                                           device_name, &device_name_length)) {
-            ERROR("load_pkcs12_secret_key_mbedtls failed");
-            return false;
-        }
-
-        device_id = convert_str_to_int(device_name, device_name_length);
-        if (device_id == 0) {
-            ERROR("Invalid device ID in keystore");
-            return false;
-        }
+    if (root_key_init_failed) {
+        ERROR("Root key initialization failed");
+        return false;
     }
 
-    if (*root_key_length < key_length) {
+    if (*root_key_length_param < root_key_length) {
         ERROR("root key too short");
         return false;
     }
 
-    memcpy(root_key, key, key_length);
-    *root_key_length = key_length;
+    memcpy(root_key, root_key_cache, root_key_length);
+    *root_key_length_param = root_key_length;
     return true;
+}
+
+// Thread-safe initialization for common root key
+static size_t common_root_key_length = 0;
+static uint8_t common_root_key_cache[SYM_128_KEY_SIZE];
+static bool common_root_key_init_failed = false;
+static once_flag common_root_key_once = ONCE_FLAG_INIT;
+
+static void init_common_root_key(void) {
+    char name[MAX_NAME_SIZE];
+    size_t name_length = MAX_NAME_SIZE;
+    strcpy(name, COMMON_ROOT_NAME);
+
+    // Call mbedTLS PKCS#12 parser with specific key name
+    common_root_key_length = SYM_128_KEY_SIZE;
+    if (!load_pkcs12_secret_key_mbedtls(common_root_key_cache, &common_root_key_length,
+                                       name, &name_length)) {
+        ERROR("load_pkcs12_secret_key_mbedtls failed");
+        common_root_key_init_failed = true;
+        return;
+    }
 }
 
 // mbedTLS implementation
 static bool get_common_root_key(
         void* common_root_key,
-        size_t* common_root_key_length) {
-    static size_t key_length = 0;
-    static uint8_t key[SYM_128_KEY_SIZE];
+        size_t* common_root_key_length_param) {
 
-    if (common_root_key_length == NULL) {
+    if (common_root_key_length_param == NULL) {
         ERROR("NULL common_root_key_length");
         return false;
     }
@@ -127,27 +161,21 @@ static bool get_common_root_key(
         return false;
     }
 
-    if (key_length == 0) {
-        char name[MAX_NAME_SIZE];
-        size_t name_length = MAX_NAME_SIZE;
-        strcpy(name, COMMON_ROOT_NAME);
+    // Thread-safe one-time initialization
+    call_once(&common_root_key_once, init_common_root_key);
 
-        // Call mbedTLS PKCS#12 parser with specific key name
-        key_length = SYM_128_KEY_SIZE;
-        if (!load_pkcs12_secret_key_mbedtls(key, &key_length,
-                                           name, &name_length)) {
-            ERROR("load_pkcs12_secret_key_mbedtls failed");
-            return false;
-        }
+    if (common_root_key_init_failed) {
+        ERROR("Common root key initialization failed");
+        return false;
     }
 
-    if (*common_root_key_length < key_length) {
+    if (*common_root_key_length_param < common_root_key_length) {
         ERROR("root key too short");
         return false;
     }
 
-    memcpy(common_root_key, key, key_length);
-    *common_root_key_length = key_length;
+    memcpy(common_root_key, common_root_key_cache, common_root_key_length);
+    *common_root_key_length_param = common_root_key_length;
     return true;
 }
 
