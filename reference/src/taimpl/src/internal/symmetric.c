@@ -19,13 +19,13 @@
 #include "symmetric.h" // NOLINT
 #include "common.h"
 #include "log.h"
+#include "mbedtls_header.h"
 #include "pad.h"
 #include "pkcs12_mbedtls.h"
 #include "porting/memory.h"
 #include "porting/rand.h"
 #include "sa_types.h"
 #include "stored_key_internal.h"
-#include "mbedtls_header.h"
 #include <memory.h>
 #include <stdio.h>
 
