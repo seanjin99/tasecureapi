@@ -45,13 +45,6 @@ if(ed25519_donna_POPULATED)
         -Wno-implicit-fallthrough
     )
 
-    # Suppress clang static analyzer false positives in ed25519-donna (CI only)
-    if(DEFINED ENV{CI} AND CMAKE_C_COMPILER_ID MATCHES "Clang")
-        target_compile_options(edwards_provider PRIVATE
-            -Wno-analyzer-core.UndefinedBinaryOperatorResult
-        )
-    endif()
-
     # Define ED25519_CUSTOMHASH and ED25519_CUSTOMRANDOM to use our custom implementations
     target_compile_definitions(edwards_provider PRIVATE
         ED25519_CUSTOMHASH

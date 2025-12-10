@@ -41,15 +41,6 @@ if(curve25519_donna_POPULATED)
         -Wno-unused-function
     )
 
-    # Suppress clang static analyzer warnings for external curve25519-donna library (CI only)
-    if(DEFINED ENV{CI})
-        target_compile_options(curve25519_provider PRIVATE
-            -Wno-analyzer-security-insecure-api-strcpy
-            -Wno-analyzer-deadcode.DeadStores
-            -Wno-analyzer-unix.Malloc
-        )
-    endif()
-
     set_property(TARGET curve25519_provider PROPERTY C_STANDARD 99)
 
     message(STATUS "curve25519-donna provider configured successfully")

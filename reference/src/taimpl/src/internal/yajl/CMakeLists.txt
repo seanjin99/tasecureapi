@@ -79,15 +79,6 @@ target_compile_options(yajl_provider PRIVATE
     -Wno-implicit-fallthrough
 )
 
-# Suppress clang static analyzer warnings for external YAJL library (CI only)
-if(DEFINED ENV{CI})
-    target_compile_options(yajl_provider PRIVATE
-        -Wno-analyzer-security-insecure-api-strcpy
-        -Wno-analyzer-deadcode.DeadStores
-        -Wno-analyzer-unix.Malloc
-    )
-endif()
-
 # Platform-specific settings
 if(WIN32)
     target_compile_definitions(yajl_provider PRIVATE WIN32)

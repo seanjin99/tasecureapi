@@ -283,30 +283,6 @@ if (BUILD_TESTS)
     target_compile_options(saclienttest PRIVATE -Werror -Wall -Wextra -Wno-type-limits -Wno-unused-parameter
             -Wno-deprecated-declarations)
 
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        # Only suppress analyzer warnings on GitHub Actions CI (not on local macOS builds)
-        if(DEFINED ENV{CI})
-            # GitHub Actions static analyzer needs these suppressions
-            target_compile_options(saclienttest PRIVATE
-                -Xclang -analyzer-disable-checker -Xclang cplusplus.NewDeleteLeaks
-            )
-            # Clang-tidy suppressions (only needed on GitHub Actions)
-            include(CheckCXXCompilerFlag)
-            check_cxx_compiler_flag("-Wno-hicpp-use-auto" COMPILER_SUPPORTS_NO_HICPP_AUTO)
-            if(COMPILER_SUPPORTS_NO_HICPP_AUTO)
-                target_compile_options(saclienttest PRIVATE -Wno-hicpp-use-auto)
-            endif()
-            check_cxx_compiler_flag("-Wno-modernize-use-auto" COMPILER_SUPPORTS_NO_MODERNIZE_AUTO)
-            if(COMPILER_SUPPORTS_NO_MODERNIZE_AUTO)
-                target_compile_options(saclienttest PRIVATE -Wno-modernize-use-auto)
-            endif()
-            check_cxx_compiler_flag("-Wno-google-runtime-int" COMPILER_SUPPORTS_NO_GOOGLE_RUNTIME_INT)
-            if(COMPILER_SUPPORTS_NO_GOOGLE_RUNTIME_INT)
-                target_compile_options(saclienttest PRIVATE -Wno-google-runtime-int)
-            endif()
-        endif()
-    endif()
-
     target_include_directories(saclienttest
             PRIVATE
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
