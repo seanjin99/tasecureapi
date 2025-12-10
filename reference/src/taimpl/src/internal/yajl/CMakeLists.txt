@@ -79,20 +79,13 @@ target_compile_options(yajl_provider PRIVATE
     -Wno-implicit-fallthrough
 )
 
-# Suppress clang static analyzer warnings for external YAJL library
-include(CheckCCompilerFlag)
-set(CMAKE_REQUIRED_QUIET TRUE)
-check_c_compiler_flag("-Wno-analyzer-security-insecure-api-strcpy" COMPILER_SUPPORTS_NO_ANALYZER_STRCPY_YAJL)
-if(COMPILER_SUPPORTS_NO_ANALYZER_STRCPY_YAJL)
-    target_compile_options(yajl_provider PRIVATE -Wno-analyzer-security-insecure-api-strcpy)
-endif()
-check_c_compiler_flag("-Wno-analyzer-deadcode.DeadStores" COMPILER_SUPPORTS_NO_ANALYZER_DEADCODE_YAJL)
-if(COMPILER_SUPPORTS_NO_ANALYZER_DEADCODE_YAJL)
-    target_compile_options(yajl_provider PRIVATE -Wno-analyzer-deadcode.DeadStores)
-endif()
-check_c_compiler_flag("-Wno-analyzer-unix.Malloc" COMPILER_SUPPORTS_NO_ANALYZER_MALLOC_YAJL)
-if(COMPILER_SUPPORTS_NO_ANALYZER_MALLOC_YAJL)
-    target_compile_options(yajl_provider PRIVATE -Wno-analyzer-unix.Malloc)
+# Suppress clang static analyzer warnings for external YAJL library (CI only)
+if(DEFINED ENV{CI})
+    target_compile_options(yajl_provider PRIVATE
+        -Wno-analyzer-security-insecure-api-strcpy
+        -Wno-analyzer-deadcode.DeadStores
+        -Wno-analyzer-unix.Malloc
+    )
 endif()
 
 # Platform-specific settings
