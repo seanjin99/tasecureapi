@@ -18,40 +18,14 @@
 
 #include "dh.h"
 #include "log.h"
-#include "pkcs8.h"
 #include "porting/memory.h"
 #include "stored_key_internal.h"
-#include <openssl/evp.h>
-#include <openssl/x509.h>
-#if OPENSSL_VERSION_NUMBER >= 0x30000000
-#include <openssl/core_names.h>
-#else
-#include <memory.h>
-#include <openssl/dh.h>
-#endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000
-static void swap_native_binary(
-        void* value,
-        size_t length) {
+#include "pkcs12_mbedtls.h"
+#include <string.h>
 
-    // Check little-endian.
-    unsigned int ui = 1;
-    char* c = (char*) &ui;
+#include "mbedtls_header.h"
 
-    if (*c == 1) {
-        // If little-endian, reverse the array to go from native to binary or binary to native.
-        char* array = (char*) value;
-        for (size_t i = 0; i < length / 2; i++) {
-            char temp = array[i];
-            array[i] = array[length - 1 - i];
-            array[length - 1 - i] = temp;
-        }
-    }
-
-    // Do nothing for big-endian.
-}
-#endif
 
 sa_status dh_get_public(
         void* out,
@@ -69,51 +43,233 @@ sa_status dh_get_public(
     }
 
     sa_status status = SA_STATUS_INTERNAL_ERROR;
-    EVP_PKEY* evp_pkey = NULL;
+    mbedtls_mpi mpi_p;
+    mbedtls_mpi mpi_g;
+    mbedtls_mpi mpi_x;
+    mbedtls_mpi mpi_gx;
+    mbedtls_mpi_init(&mpi_p);
+    mbedtls_mpi_init(&mpi_g);
+    mbedtls_mpi_init(&mpi_x);
+    mbedtls_mpi_init(&mpi_gx);
+    
+    uint8_t* der_buffer = NULL;
+    
     do {
-        const uint8_t* key = stored_key_get_key(stored_key);
-        if (key == NULL) {
-            ERROR("stored_key_get_key failed");
+        // Get the stored key parameters
+        const uint8_t* key_data = stored_key_get_key(stored_key);
+        size_t key_data_length = stored_key_get_length(stored_key);
+        const sa_header* header = stored_key_get_header(stored_key);
+        if (header == NULL) {
+            ERROR("stored_key_get_header failed");
+            break;
+        }
+        
+        const uint8_t* p = header->type_parameters.dh_parameters.p;
+        size_t p_length = header->type_parameters.dh_parameters.p_length;
+        const uint8_t* g = header->type_parameters.dh_parameters.g;
+        size_t g_length = header->type_parameters.dh_parameters.g_length;
+
+        // Extract X from stored key data (format: [p_length(4)][g_length(4)][x_length(4)][P][G][X])
+        if (key_data_length < 12) {
+            ERROR("Invalid key data length");
+            break;
+        }
+        const uint32_t* lengths = (const uint32_t*)key_data;
+        size_t stored_p_length = lengths[0];
+        size_t stored_g_length = lengths[1];
+        size_t x_length = lengths[2];
+        
+        if (key_data_length != 12 + stored_p_length + stored_g_length + x_length) {
+            ERROR("Key data length mismatch");
+            break;
+        }
+        
+        const uint8_t* x = key_data + 12 + stored_p_length + stored_g_length;
+
+        // Compute the public key using mbedTLS: GX = G^X mod P
+        int ret = mbedtls_mpi_read_binary(&mpi_p, p, p_length);
+        if (ret != 0) {
+            ERROR("mbedtls_mpi_read_binary(p) failed: -0x%04x", -ret);
+            break;
+        }
+        
+        ret = mbedtls_mpi_read_binary(&mpi_g, g, g_length);
+        if (ret != 0) {
+            ERROR("mbedtls_mpi_read_binary(g) failed: -0x%04x", -ret);
+            break;
+        }
+        
+        ret = mbedtls_mpi_read_binary(&mpi_x, x, x_length);
+        if (ret != 0) {
+            ERROR("mbedtls_mpi_read_binary(x) failed: -0x%04x", -ret);
+            break;
+        }
+        
+        ret = mbedtls_mpi_exp_mod(&mpi_gx, &mpi_g, &mpi_x, &mpi_p, NULL);
+        if (ret != 0) {
+            ERROR("mbedtls_mpi_exp_mod failed: -0x%04x", -ret);
             break;
         }
 
-        size_t key_length = stored_key_get_length(stored_key);
-        evp_pkey = evp_pkey_from_pkcs8(EVP_PKEY_DH, key, key_length);
-        if (evp_pkey == NULL) {
-            ERROR("evp_pkey_from_pkcs8 failed");
+        // Encode to DER format manually using mbedTLS ASN.1 functions
+        // DER structure for DH public key (SubjectPublicKeyInfo):
+        // SEQUENCE {
+        //   SEQUENCE {
+        //     OBJECT IDENTIFIER dhKeyAgreement (1.2.840.113549.1.3.1)
+        //     SEQUENCE {
+        //       INTEGER p
+        //       INTEGER g
+        //     }
+        //   }
+        //   BIT STRING {
+        //     INTEGER public_key
+        //   }
+        // }
+        
+        // Allocate buffer for DER encoding (generous size estimate)
+        size_t der_max_size = 1024 + p_length + g_length + mbedtls_mpi_size(&mpi_gx);
+        der_buffer = memory_secure_alloc(der_max_size);
+        if (der_buffer == NULL) {
+            ERROR("memory_secure_alloc failed");
             break;
         }
-
-        int length = i2d_PUBKEY(evp_pkey, NULL);
-        if (length <= 0) {
-            ERROR("i2d_PUBKEY failed");
+        
+        // Write DER from the end of the buffer (mbedTLS writes backwards)
+        unsigned char* c = der_buffer + der_max_size;
+        size_t len = 0;
+        
+        // Step 1: Write the public key as INTEGER
+        ret = mbedtls_asn1_write_mpi(&c, der_buffer, &mpi_gx);
+        if (ret < 0) {
+            ERROR("mbedtls_asn1_write_mpi(gx) failed: -0x%04x", -ret);
             break;
         }
+        size_t pubkey_integer_len = ret;
+        
+        // Step 2: Add unused bits byte (0x00) before the INTEGER
+        if (c - der_buffer < 1) {
+            ERROR("Buffer overflow");
+            break;
+        }
+        *(--c) = 0x00;
+        size_t bitstring_content_len = pubkey_integer_len + 1;  // INTEGER + unused bits byte
+        
+        // Step 3: Write BIT STRING tag and length
+        ret = mbedtls_asn1_write_len(&c, der_buffer, bitstring_content_len);
+        if (ret < 0) {
+            ERROR("mbedtls_asn1_write_len(bitstring) failed: -0x%04x", -ret);
+            break;
+        }
+        size_t bitstring_len = ret + bitstring_content_len;
+        
+        ret = mbedtls_asn1_write_tag(&c, der_buffer, MBEDTLS_ASN1_BIT_STRING);
+        if (ret < 0) {
+            ERROR("mbedtls_asn1_write_tag(bitstring) failed: -0x%04x", -ret);
+            break;
+        }
+        bitstring_len += ret;
+        
+        // Step 4: Write algorithm parameters (SEQUENCE { p, g })
+        // Write g INTEGER
+        ret = mbedtls_asn1_write_mpi(&c, der_buffer, &mpi_g);
+        if (ret < 0) {
+            ERROR("mbedtls_asn1_write_mpi(g) failed: -0x%04x", -ret);
+            break;
+        }
+        size_t params_len = ret;
+        
+        // Write p INTEGER
+        ret = mbedtls_asn1_write_mpi(&c, der_buffer, &mpi_p);
+        if (ret < 0) {
+            ERROR("mbedtls_asn1_write_mpi(p) failed: -0x%04x", -ret);
+            break;
+        }
+        params_len += ret;
+        
+        // Write SEQUENCE tag/length for parameters
+        ret = mbedtls_asn1_write_len(&c, der_buffer, params_len);
+        if (ret < 0) {
+            ERROR("mbedtls_asn1_write_len(params) failed: -0x%04x", -ret);
+            break;
+        }
+        params_len += ret;
+        
+        ret = mbedtls_asn1_write_tag(&c, der_buffer, MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE);
+        if (ret < 0) {
+            ERROR("mbedtls_asn1_write_tag(params seq) failed: -0x%04x", -ret);
+            break;
+        }
+        params_len += ret;
+        
+        // Step 5: Write algorithm OID (dhKeyAgreement 1.2.840.113549.1.3.1)
+        // OID value: 1.2.840.113549.1.3.1
+        const char dh_oid_value[] = "\x2a\x86\x48\x86\xf7\x0d\x01\x03\x01";
+        ret = mbedtls_asn1_write_oid(&c, der_buffer, dh_oid_value, 9);
+        if (ret < 0) {
+            ERROR("mbedtls_asn1_write_oid failed: -0x%04x", -ret);
+            break;
+        }
+        size_t oid_len = ret;
+        
+        // Step 6: Write algorithm identifier SEQUENCE { OID, params }
+        ret = mbedtls_asn1_write_len(&c, der_buffer, oid_len + params_len);
+        if (ret < 0) {
+            ERROR("mbedtls_asn1_write_len(alg) failed: -0x%04x", -ret);
+            break;
+        }
+        size_t alg_len = ret + oid_len + params_len;
+        
+        ret = mbedtls_asn1_write_tag(&c, der_buffer, MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE);
+        if (ret < 0) {
+            ERROR("mbedtls_asn1_write_tag(alg seq) failed: -0x%04x", -ret);
+            break;
+        }
+        alg_len += ret;
+        
+        // Step 7: Write outer SEQUENCE { algorithm, publicKey }
+        len = alg_len + bitstring_len;
+        ret = mbedtls_asn1_write_len(&c, der_buffer, len);
+        if (ret < 0) {
+            ERROR("mbedtls_asn1_write_len(outer) failed: -0x%04x", -ret);
+            break;
+        }
+        len += ret;
+        
+        ret = mbedtls_asn1_write_tag(&c, der_buffer, MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE);
+        if (ret < 0) {
+            ERROR("mbedtls_asn1_write_tag(outer seq) failed: -0x%04x", -ret);
+            break;
+        }
+        len += ret;
 
+        // Return length if just querying
         if (out == NULL) {
-            *out_length = length;
+            *out_length = len;
             status = SA_STATUS_OK;
             break;
         }
 
-        if (*out_length < (size_t) length) {
+        if (*out_length < len) {
             ERROR("Invalid out_length");
             status = SA_STATUS_INVALID_PARAMETER;
             break;
         }
 
-        uint8_t* p_out = out;
-        length = i2d_PUBKEY(evp_pkey, &p_out);
-        if (length <= 0) {
-            ERROR("i2d_PUBKEY failed");
-            break;
-        }
-
-        *out_length = length;
+        // Copy DER data to output
+        memcpy(out, c, len);
+        *out_length = len;
         status = SA_STATUS_OK;
     } while (false);
 
-    EVP_PKEY_free(evp_pkey);
+    if (der_buffer != NULL) {
+        memory_secure_free(der_buffer);
+    }
+    
+    mbedtls_mpi_free(&mpi_p);
+    mbedtls_mpi_free(&mpi_g);
+    mbedtls_mpi_free(&mpi_x);
+    mbedtls_mpi_free(&mpi_gx);
+
     return status;
 }
 
@@ -144,109 +300,262 @@ sa_status dh_compute_shared_secret(
         return SA_STATUS_NULL_PARAMETER;
     }
 
-    sa_status status = SA_STATUS_INTERNAL_ERROR;
-    uint8_t* shared_secret = NULL;
-    size_t shared_secret_length = 0;
-    EVP_PKEY* evp_pkey = NULL;
-    EVP_PKEY* other_evp_pkey = NULL;
-    EVP_PKEY_CTX* evp_pkey_ctx = NULL;
-    do {
-        const uint8_t* key = stored_key_get_key(stored_key);
-        if (key == NULL) {
-            ERROR("stored_key_get_key failed");
-            break;
-        }
-
-        size_t key_length = stored_key_get_length(stored_key);
-        const sa_header* header = stored_key_get_header(stored_key);
-        if (header == NULL) {
-            ERROR("stored_key_get_header failed");
-            break;
-        }
-
-        evp_pkey = evp_pkey_from_pkcs8(EVP_PKEY_DH, key, key_length);
-        if (evp_pkey == NULL) {
-            ERROR("evp_pkey_from_pkcs8 failed");
-            break;
-        }
-
-        const uint8_t* p_other_public = other_public;
-        other_evp_pkey = d2i_PUBKEY(NULL, &p_other_public, (long) other_public_length);
-        if (other_evp_pkey == NULL) {
-            ERROR("d2i_PUBKEY failed");
-            break;
-        }
-
-        if (EVP_PKEY_id(evp_pkey) != EVP_PKEY_id(other_evp_pkey)) {
-            ERROR("Key type mismatch");
-            status = SA_STATUS_INVALID_PARAMETER;
-            break;
-        }
-
-        evp_pkey_ctx = EVP_PKEY_CTX_new(evp_pkey, NULL);
-        if (evp_pkey == NULL) {
-            ERROR("EVP_PKEY_CTX_new failed");
-            break;
-        }
-
-        if (EVP_PKEY_derive_init(evp_pkey_ctx) != 1) {
-            ERROR("EVP_PKEY_derive_init failed");
-            break;
-        }
-
-#if OPENSSL_VERSION_NUMBER >= 0x10100000
-        if (EVP_PKEY_CTX_set_dh_pad(evp_pkey_ctx, 1) != 1) {
-            ERROR("EVP_PKEY_CTX_set_dh_pad failed");
-            return false;
-        }
-#endif
-
-        if (EVP_PKEY_derive_set_peer(evp_pkey_ctx, other_evp_pkey) != 1) {
-            ERROR("EVP_PKEY_derive_set_peer failed");
-            break;
-        }
-
-        if (EVP_PKEY_derive(evp_pkey_ctx, NULL, &shared_secret_length) != 1) {
-            ERROR("EVP_PKEY_derive failed");
-            break;
-        }
-
-        shared_secret = memory_secure_alloc(shared_secret_length);
-        if (shared_secret == NULL) {
-            ERROR("memory_secure_alloc failed");
-            break;
-        }
-
-        if (EVP_PKEY_derive(evp_pkey_ctx, shared_secret, &shared_secret_length) != 1) {
-            ERROR("EVP_PKEY_derive failed");
-            break;
-        }
-
-#if OPENSSL_VERSION_NUMBER < 0x10100000
-        if (header->size != shared_secret_length) {
-            memmove(shared_secret + header->size - shared_secret_length, shared_secret, shared_secret_length);
-            memory_memset_unoptimizable(shared_secret, 0, header->size - shared_secret_length);
-            shared_secret_length = header->size;
-        }
-#endif
-        sa_type_parameters type_parameters;
-        memory_memset_unoptimizable(&type_parameters, 0, sizeof(sa_type_parameters));
-        status = stored_key_create(stored_key_shared_secret, rights, &header->rights, SA_KEY_TYPE_SYMMETRIC,
-                &type_parameters, shared_secret_length, shared_secret, shared_secret_length);
-        if (status != SA_STATUS_OK) {
-            ERROR("stored_key_create failed");
-            break;
-        }
-    } while (false);
-
-    if (shared_secret != NULL) {
-        memory_memset_unoptimizable(shared_secret, 0, shared_secret_length);
-        memory_secure_free(shared_secret);
+    if (stored_key_shared_secret == NULL || rights == NULL || other_public == NULL || stored_key == NULL) {
+        ERROR("NULL parameter");
+        return SA_STATUS_NULL_PARAMETER;
     }
-
-    EVP_PKEY_free(evp_pkey);
-    EVP_PKEY_CTX_free(evp_pkey_ctx);
-    EVP_PKEY_free(other_evp_pkey);
+    
+    // Get the stored key data which contains P, G, and X concatenated
+    // Format: [p_length(4)][g_length(4)][x_length(4)][P][G][X]
+    const uint8_t* key_data = stored_key_get_key(stored_key);
+    size_t key_data_length = stored_key_get_length(stored_key);
+    
+    if (key_data_length < 12) {  // Need at least 3 length fields
+        ERROR("Invalid key data length");
+        return SA_STATUS_INVALID_PARAMETER;
+    }
+    
+    // Extract lengths
+    const uint32_t* lengths = (const uint32_t*)key_data;
+    size_t p_length = lengths[0];
+    size_t g_length = lengths[1];
+    size_t x_length = lengths[2];
+    
+    if (key_data_length != 12 + p_length + g_length + x_length) {
+        ERROR("Key data length mismatch");
+        return SA_STATUS_INVALID_PARAMETER;
+    }
+    
+    // Extract P, G, X
+    const uint8_t* p = key_data + 12;
+    const uint8_t* g = p + p_length;
+    const uint8_t* x = g + g_length;
+    
+    // Reconstruct the DH context with P, G, and X
+    mbedtls_dhm_context dhm;
+    mbedtls_dhm_init(&dhm);
+    
+    mbedtls_mpi mpi_p;
+    mbedtls_mpi mpi_g;
+    mbedtls_mpi mpi_x;
+    mbedtls_mpi_init(&mpi_p);
+    mbedtls_mpi_init(&mpi_g);
+    mbedtls_mpi_init(&mpi_x);
+    
+    int ret = mbedtls_mpi_read_binary(&mpi_p, p, p_length);
+    if (ret != 0) {
+        ERROR("mbedtls_mpi_read_binary(p) failed: -0x%04x", -ret);
+        mbedtls_mpi_free(&mpi_p);
+        mbedtls_mpi_free(&mpi_g);
+        mbedtls_mpi_free(&mpi_x);
+        mbedtls_dhm_free(&dhm);
+        return SA_STATUS_INVALID_PARAMETER;
+    }
+    
+    ret = mbedtls_mpi_read_binary(&mpi_g, g, g_length);
+    if (ret != 0) {
+        ERROR("mbedtls_mpi_read_binary(g) failed: -0x%04x", -ret);
+        mbedtls_mpi_free(&mpi_p);
+        mbedtls_mpi_free(&mpi_g);
+        mbedtls_mpi_free(&mpi_x);
+        mbedtls_dhm_free(&dhm);
+        return SA_STATUS_INVALID_PARAMETER;
+    }
+    
+    ret = mbedtls_mpi_read_binary(&mpi_x, x, x_length);
+    if (ret != 0) {
+        ERROR("mbedtls_mpi_read_binary(x) failed: -0x%04x", -ret);
+        mbedtls_mpi_free(&mpi_p);
+        mbedtls_mpi_free(&mpi_g);
+        mbedtls_mpi_free(&mpi_x);
+        mbedtls_dhm_free(&dhm);
+        return SA_STATUS_INVALID_PARAMETER;
+    }
+    
+    // Set the group (P and G)
+    ret = mbedtls_dhm_set_group(&dhm, &mpi_p, &mpi_g);
+    if (ret != 0) {
+        ERROR("mbedtls_dhm_set_group failed: -0x%04x", -ret);
+        mbedtls_mpi_free(&mpi_p);
+        mbedtls_mpi_free(&mpi_g);
+        mbedtls_mpi_free(&mpi_x);
+        mbedtls_dhm_free(&dhm);
+        return SA_STATUS_INVALID_PARAMETER;
+    }
+    
+    // Set the private key (X)
+    ret = mbedtls_mpi_copy(&dhm.X, &mpi_x);
+    if (ret != 0) {
+        ERROR("mbedtls_mpi_copy(X) failed: -0x%04x", -ret);
+        mbedtls_mpi_free(&mpi_p);
+        mbedtls_mpi_free(&mpi_g);
+        mbedtls_mpi_free(&mpi_x);
+        mbedtls_dhm_free(&dhm);
+        return SA_STATUS_INVALID_PARAMETER;
+    }
+    
+    // Compute our public key GX = G^X mod P
+    // This IS needed for DH calculation
+    ret = mbedtls_mpi_exp_mod(&dhm.GX, &dhm.G, &dhm.X, &dhm.P, NULL);
+    if (ret != 0) {
+        ERROR("mbedtls_mpi_exp_mod(GX) failed: -0x%04x", -ret);
+        mbedtls_mpi_free(&mpi_p);
+        mbedtls_mpi_free(&mpi_g);
+        mbedtls_mpi_free(&mpi_x);
+        mbedtls_dhm_free(&dhm);
+        return SA_STATUS_INVALID_PARAMETER;
+    }
+    
+    mbedtls_mpi_free(&mpi_p);
+    mbedtls_mpi_free(&mpi_g);
+    mbedtls_mpi_free(&mpi_x);
+    
+    // Read the other party's public key
+    // The public key comes in DER format (from dh_get_public), so we need to parse it
+    // DER format: SEQUENCE { algorithm, BIT STRING containing the public key integer }
+    // We need to extract the raw public key value
+    unsigned char* pub_key_raw = NULL;
+    size_t pub_key_raw_len = 0;
+    
+    if (other_public_length == dhm.len) {
+        pub_key_raw_len = other_public_length;
+        pub_key_raw = (unsigned char*)other_public;
+    } else {
+        // Need to parse DER format 
+        // Parse DER manually: Skip SEQUENCE header and algorithm identifier to get to BIT STRING
+        unsigned char* p = (unsigned char*)other_public;
+        unsigned char* end = p + other_public_length;
+        size_t len;
+        
+        // Skip SEQUENCE tag and length
+        if (mbedtls_asn1_get_tag(&p, end, &len, MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE) != 0) {
+            ERROR("Failed to parse DER SEQUENCE");
+            mbedtls_dhm_free(&dhm);
+            return SA_STATUS_INVALID_PARAMETER;
+        }
+        
+        // Skip algorithm identifier SEQUENCE
+        if (mbedtls_asn1_get_tag(&p, end, &len, MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE) != 0) {
+            ERROR("Failed to parse algorithm identifier");
+            mbedtls_dhm_free(&dhm);
+            return SA_STATUS_INVALID_PARAMETER;
+        }
+        p += len;  // Skip the algorithm identifier content
+        
+        // Get BIT STRING
+        if (mbedtls_asn1_get_tag(&p, end, &len, MBEDTLS_ASN1_BIT_STRING) != 0) {
+            ERROR("Failed to parse BIT STRING");
+            mbedtls_dhm_free(&dhm);
+            return SA_STATUS_INVALID_PARAMETER;
+        }
+        
+        // Skip the "number of unused bits" byte in BIT STRING
+        if (len < 1 || *p != 0) {
+            ERROR("Invalid BIT STRING format");
+            mbedtls_dhm_free(&dhm);
+            return SA_STATUS_INVALID_PARAMETER;
+        }
+        p++;
+        len--;
+        
+        // Now p points to the INTEGER containing the public key
+        if (mbedtls_asn1_get_tag(&p, end, &len, MBEDTLS_ASN1_INTEGER) != 0) {
+            ERROR("Failed to parse public key INTEGER");
+            mbedtls_dhm_free(&dhm);
+            return SA_STATUS_INVALID_PARAMETER;
+        }
+        
+        pub_key_raw = p;
+        pub_key_raw_len = len;
+        
+        // The INTEGER might be shorter than dhm.len if there are leading zeros
+        // Or it might be longer by 1 if there's a leading 0x00 to indicate positive number
+        // We need to handle both cases
+        if (pub_key_raw_len > dhm.len) {
+            // Check if there's a leading 0x00 byte (ASN.1 uses this for positive numbers with high bit set)
+            if (pub_key_raw_len == dhm.len + 1 && pub_key_raw[0] == 0x00) {
+                pub_key_raw++;
+                pub_key_raw_len--;
+            } else {
+                ERROR("Public key too long: %zu > %zu", pub_key_raw_len, dhm.len);
+                mbedtls_dhm_free(&dhm);
+                return SA_STATUS_INVALID_PARAMETER;
+            }
+        }
+    }
+    
+    // mbedtls_dhm_read_public expects exactly dhm.len bytes
+    // If the key is shorter, we need to pad it with leading zeros
+    unsigned char* padded_pub_key = NULL;
+    bool need_free = false;
+    
+    if (pub_key_raw_len < dhm.len) {
+        // Allocate padded buffer
+        padded_pub_key = memory_secure_alloc(dhm.len);
+        if (padded_pub_key == NULL) {
+            ERROR("memory_secure_alloc failed for padded_pub_key");
+            mbedtls_dhm_free(&dhm);
+            return SA_STATUS_INTERNAL_ERROR;
+        }
+        need_free = true;
+        
+        // Pad with leading zeros
+        memset(padded_pub_key, 0, dhm.len - pub_key_raw_len);
+        memcpy(padded_pub_key + (dhm.len - pub_key_raw_len), pub_key_raw, pub_key_raw_len);
+        pub_key_raw = padded_pub_key;
+        pub_key_raw_len = dhm.len;
+    } else if (pub_key_raw_len > dhm.len) {
+        ERROR("Public key length mismatch: %zu != %zu", pub_key_raw_len, dhm.len);
+        mbedtls_dhm_free(&dhm);
+        return SA_STATUS_INVALID_PARAMETER;
+    }
+    
+    ret = mbedtls_dhm_read_public(&dhm, pub_key_raw, pub_key_raw_len);
+    if (need_free) {
+        memory_secure_free(padded_pub_key);
+    }
+    if (ret != 0) {
+        ERROR("mbedtls_dhm_read_public failed: -0x%04x (len=%zu, dhm.len=%zu)", -ret, pub_key_raw_len, dhm.len);
+        mbedtls_dhm_free(&dhm);
+        return SA_STATUS_INVALID_PARAMETER;
+    }
+    
+    // Calculate the shared secret
+    size_t const modulus_len = dhm.len;  // Save the full modulus length
+    size_t secret_len = modulus_len;
+    uint8_t* shared_secret = memory_secure_alloc(modulus_len);
+    if (shared_secret == NULL) {
+        ERROR("memory_secure_alloc failed");
+        mbedtls_dhm_free(&dhm);
+        return SA_STATUS_INTERNAL_ERROR;
+    }
+    
+    ret = mbedtls_dhm_calc_secret(&dhm, shared_secret, modulus_len, &secret_len, NULL, NULL);
+    if (ret != 0) {
+        ERROR("mbedtls_dhm_calc_secret failed: -0x%04x", -ret);
+        memory_memset_unoptimizable(shared_secret, 0, modulus_len);
+        memory_secure_free(shared_secret);
+        mbedtls_dhm_free(&dhm);
+        return SA_STATUS_INTERNAL_ERROR;
+    }
+    
+    // mbedtls_dhm_calc_secret may return a shorter secret if there are leading zeros
+    // We need to pad it back to the full modulus size for consistent behavior
+    if (secret_len < modulus_len) {
+        // Move the secret to the end and pad with leading zeros
+        memmove(shared_secret + (modulus_len - secret_len), shared_secret, secret_len);
+        memset(shared_secret, 0, modulus_len - secret_len);
+        secret_len = modulus_len;
+    }
+    
+    sa_type_parameters type_parameters;
+    memory_memset_unoptimizable(&type_parameters, 0, sizeof(sa_type_parameters));
+    // Optionally fill type_parameters.dh_parameters if needed
+    sa_status status = stored_key_create(stored_key_shared_secret, rights, NULL, SA_KEY_TYPE_SYMMETRIC,
+            &type_parameters, secret_len, shared_secret, secret_len);
+    memory_memset_unoptimizable(shared_secret, 0, modulus_len);
+    memory_secure_free(shared_secret);
+    mbedtls_dhm_free(&dhm);
     return status;
 }
 
@@ -288,183 +597,150 @@ sa_status dh_generate_key(
         return SA_STATUS_INVALID_PARAMETER;
     }
 
-    sa_status status = SA_STATUS_INTERNAL_ERROR;
-    uint8_t* key = NULL;
-    size_t key_length;
-    EVP_PKEY* evp_pkey = NULL;
-#if OPENSSL_VERSION_NUMBER >= 0x30000000
-    EVP_PKEY* evp_pkey_parameters = NULL;
-    EVP_PKEY_CTX* evp_pkey_ctx = NULL;
-    EVP_PKEY_CTX* evp_pkey_parameters_ctx = NULL;
-    uint8_t* key_p = NULL;
-    uint8_t* key_g = NULL;
-#else
-    DH* dh = NULL;
-    BIGNUM* bn_p = NULL;
-    BIGNUM* bn_g = NULL;
-#endif
-    do {
-#if OPENSSL_VERSION_NUMBER >= 0x30000000
-        key_p = memory_secure_alloc(p_length);
-        if (key_p == NULL) {
-            ERROR("memory_secure_alloc failed");
-            break;
-        }
-        memory_memset_unoptimizable(key_p, 0, p_length);
-
-        key_g = memory_secure_alloc(g_length);
-        if (key_g == NULL) {
-            ERROR("memory_secure_alloc failed");
-            break;
-        }
-        memory_memset_unoptimizable(key_g, 0, g_length);
-
-        memcpy(key_p, p, p_length);
-        swap_native_binary(key_p, p_length);
-        memcpy(key_g, g, g_length);
-        swap_native_binary(key_g, g_length);
-
-        OSSL_PARAM params[] = {
-                OSSL_PARAM_construct_BN(OSSL_PKEY_PARAM_FFC_P, key_p, p_length),
-                OSSL_PARAM_construct_BN(OSSL_PKEY_PARAM_FFC_G, key_g, g_length),
-                OSSL_PARAM_construct_end()};
-
-        evp_pkey_parameters_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DH, NULL);
-        if (evp_pkey_parameters_ctx == NULL) {
-            ERROR("EVP_PKEY_CTX_new_id failed");
-            break;
-        }
-
-        if (EVP_PKEY_fromdata_init(evp_pkey_parameters_ctx) != 1) {
-            ERROR("EVP_PKEY_fromdata_init failed");
-            break;
-        }
-
-        if (EVP_PKEY_fromdata(evp_pkey_parameters_ctx, &evp_pkey_parameters, EVP_PKEY_KEY_PARAMETERS, params) != 1) {
-            ERROR("EVP_PKEY_fromdata failed");
-            break;
-        }
-
-        evp_pkey_ctx = EVP_PKEY_CTX_new(evp_pkey_parameters, NULL);
-        if (evp_pkey_ctx == NULL) {
-            ERROR("EVP_PKEY_CTX_new failed");
-            break;
-        }
-
-        if (EVP_PKEY_keygen_init(evp_pkey_ctx) != 1) {
-            ERROR("EVP_PKEY_keygen_init failed");
-            break;
-        }
-
-        if (EVP_PKEY_generate(evp_pkey_ctx, &evp_pkey) != 1) {
-            ERROR("EVP_PKEY_generate failed");
-            status = SA_STATUS_INVALID_PARAMETER;
-            break;
-        }
-
-#else
-        // set params
-        bn_p = BN_bin2bn(p, (int) p_length, NULL);
-        if (bn_p == NULL) {
-            ERROR("BN_bin2bn failed");
-            break;
-        }
-
-        bn_g = BN_bin2bn(g, (int) g_length, NULL);
-        if (bn_g == NULL) {
-            ERROR("BN_bin2bn failed");
-            break;
-        }
-
-        dh = DH_new();
-        if (dh == NULL) {
-            ERROR("DH_new failed");
-            break;
-        }
-
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-        dh->p = bn_p;
-        dh->g = bn_g;
-#else
-        if (DH_set0_pqg(dh, bn_p, NULL, bn_g) != 1) {
-            ERROR("DH_set0_pqg failed");
-            break;
-        }
-
-#endif
-        // at this point ownership of bns is passed to dh
-        bn_p = NULL;
-        bn_g = NULL;
-
-        if (DH_generate_key(dh) != 1) {
-            ERROR("DH_generate_key failed");
-            status = SA_STATUS_INVALID_PARAMETER;
-            break;
-        }
-
-        evp_pkey = EVP_PKEY_new();
-        if (evp_pkey == NULL) {
-            ERROR("EVP_PKEY_new failed");
-            break;
-        }
-
-        if (EVP_PKEY_set1_DH(evp_pkey, dh) != 1) {
-            ERROR("EVP_PKEY_set1_DH failed");
-            break;
-        }
-
-#endif
-        key_length = 0;
-        if (!evp_pkey_to_pkcs8(NULL, &key_length, evp_pkey)) {
-            ERROR("evp_pkey_to_pkcs8 failed");
-            break;
-        }
-
-        key = memory_secure_alloc(key_length);
-        if (key == NULL) {
-            ERROR("memory_secure_alloc failed");
-            break;
-        }
-
-        if (!evp_pkey_to_pkcs8(key, &key_length, evp_pkey)) {
-            ERROR("evp_pkey_to_pkcs8 failed");
-            break;
-        }
-
-        sa_type_parameters type_parameters;
-        memory_memset_unoptimizable(&type_parameters, 0, sizeof(type_parameters));
-        memcpy(type_parameters.dh_parameters.p, p, p_length);
-        type_parameters.dh_parameters.p_length = p_length;
-        memcpy(type_parameters.dh_parameters.g, g, g_length);
-        type_parameters.dh_parameters.g_length = g_length;
-        status = stored_key_create(stored_key, rights, NULL, SA_KEY_TYPE_DH, &type_parameters, p_length, key,
-                key_length);
-        if (status != SA_STATUS_OK) {
-            ERROR("stored_key_create failed");
-            break;
-        }
-    } while (false);
-
-    if (key != NULL) {
-        memory_memset_unoptimizable(key, 0, key_length);
-        memory_secure_free(key);
+    if (stored_key == NULL || rights == NULL || p == NULL || g == NULL) {
+        ERROR("NULL parameter");
+        return SA_STATUS_NULL_PARAMETER;
     }
-
-    EVP_PKEY_free(evp_pkey);
-#if OPENSSL_VERSION_NUMBER >= 0x30000000
-    EVP_PKEY_free(evp_pkey_parameters);
-    EVP_PKEY_CTX_free(evp_pkey_parameters_ctx);
-    EVP_PKEY_CTX_free(evp_pkey_ctx);
-    if (key_p != NULL)
-        memory_secure_free(key_p);
-
-    if (key_g != NULL)
-        memory_secure_free(key_g);
-
-#else
-    DH_free(dh);
-    BN_free(bn_p);
-    BN_free(bn_g);
-#endif
+    mbedtls_dhm_context dhm;
+    mbedtls_dhm_init(&dhm);
+    mbedtls_mpi mpi_p;
+    mbedtls_mpi mpi_g;
+    mbedtls_mpi_init(&mpi_p);
+    mbedtls_mpi_init(&mpi_g);
+    int ret = mbedtls_mpi_read_binary(&mpi_p, (const unsigned char*)p, p_length);
+    if (ret != 0) {
+        ERROR("mbedtls_mpi_read_binary(p) failed: -0x%04x", -ret);
+        mbedtls_mpi_free(&mpi_p);
+        mbedtls_mpi_free(&mpi_g);
+        mbedtls_dhm_free(&dhm);
+        return SA_STATUS_INVALID_PARAMETER;
+    }
+    ret = mbedtls_mpi_read_binary(&mpi_g, (const unsigned char*)g, g_length);
+    if (ret != 0) {
+        ERROR("mbedtls_mpi_read_binary(g) failed: -0x%04x", -ret);
+        mbedtls_mpi_free(&mpi_p);
+        mbedtls_mpi_free(&mpi_g);
+        mbedtls_dhm_free(&dhm);
+        return SA_STATUS_INVALID_PARAMETER;
+    }
+    ret = mbedtls_dhm_set_group(&dhm, &mpi_p, &mpi_g);
+    if (ret != 0) {
+        ERROR("mbedtls_dhm_set_group failed: -0x%04x", -ret);
+        mbedtls_mpi_free(&mpi_p);
+        mbedtls_mpi_free(&mpi_g);
+        mbedtls_dhm_free(&dhm);
+        return SA_STATUS_INVALID_PARAMETER;
+    }
+    size_t x_size = dhm.len;
+    uint8_t* x = memory_secure_alloc(x_size);
+    if (x == NULL) {
+        ERROR("memory_secure_alloc failed");
+        mbedtls_mpi_free(&mpi_p);
+        mbedtls_mpi_free(&mpi_g);
+        mbedtls_dhm_free(&dhm);
+        return SA_STATUS_INTERNAL_ERROR;
+    }
+    mbedtls_entropy_context entropy;
+    mbedtls_ctr_drbg_context ctr_drbg;
+    mbedtls_entropy_init(&entropy);
+    mbedtls_ctr_drbg_init(&ctr_drbg);
+    const char* pers = "dh_genkey";
+    ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char*)pers, strlen(pers));
+    if (ret != 0) {
+        ERROR("mbedtls_ctr_drbg_seed failed: -0x%04x", -ret);
+        memory_secure_free(x);
+        mbedtls_mpi_free(&mpi_p);
+        mbedtls_mpi_free(&mpi_g);
+        mbedtls_dhm_free(&dhm);
+        mbedtls_entropy_free(&entropy);
+        mbedtls_ctr_drbg_free(&ctr_drbg);
+        return SA_STATUS_INTERNAL_ERROR;
+    }
+    ret = mbedtls_dhm_make_public(&dhm, (int)x_size, x, x_size, mbedtls_ctr_drbg_random, &ctr_drbg);
+    if (ret != 0) {
+        ERROR("mbedtls_dhm_make_public failed: -0x%04x", -ret);
+        memory_secure_free(x);
+        mbedtls_mpi_free(&mpi_p);
+        mbedtls_mpi_free(&mpi_g);
+        mbedtls_dhm_free(&dhm);
+        mbedtls_entropy_free(&entropy);
+        mbedtls_ctr_drbg_free(&ctr_drbg);
+        // Check if it's a bad input parameter error (mbedTLS combines error codes)
+        // MBEDTLS_ERR_DHM_MAKE_PUBLIC_FAILED is -0x3280, and it may be combined with
+        // low-level errors like MBEDTLS_ERR_MPI_BAD_INPUT_DATA to give -0x3284
+        // Check if error is in the range for MAKE_PUBLIC_FAILED (between -0x3280 and -0x32FF)
+        if ((ret <= -0x3200 && ret >= -0x32FF) ||
+            ret == MBEDTLS_ERR_DHM_BAD_INPUT_DATA ||
+            ret == MBEDTLS_ERR_DHM_INVALID_FORMAT) {
+            return SA_STATUS_INVALID_PARAMETER;
+        }
+        return SA_STATUS_INTERNAL_ERROR;
+    }
+    
+    // NOTE: x buffer now contains GX (the public key), not X (the private key)
+    // We need to extract the actual private key X from dhm.X
+    // Get the actual size of X (it may be smaller than P)
+    size_t actual_x_size = mbedtls_mpi_size(&dhm.X);
+    
+    // Clear the x buffer and write X to it (without leading zeros)
+    memset(x, 0, x_size);
+    ret = mbedtls_mpi_write_binary(&dhm.X, x, actual_x_size);
+    if (ret != 0) {
+        ERROR("mbedtls_mpi_write_binary(X) failed: -0x%04x", -ret);
+        memory_secure_free(x);
+        mbedtls_mpi_free(&mpi_p);
+        mbedtls_mpi_free(&mpi_g);
+        mbedtls_dhm_free(&dhm);
+        mbedtls_entropy_free(&entropy);
+        mbedtls_ctr_drbg_free(&ctr_drbg);
+        return SA_STATUS_INTERNAL_ERROR;
+    }
+    
+    // Store P, G, and X together in format: [p_length(4)][g_length(4)][x_length(4)][P][G][X]
+    // Use actual_x_size for the X length
+    x_size = actual_x_size;
+    size_t key_data_length = 12 + p_length + g_length + x_size;
+    uint8_t* key_data = memory_secure_alloc(key_data_length);
+    if (key_data == NULL) {
+        ERROR("memory_secure_alloc failed");
+        memory_secure_free(x);
+        mbedtls_mpi_free(&mpi_p);
+        mbedtls_mpi_free(&mpi_g);
+        mbedtls_dhm_free(&dhm);
+        mbedtls_entropy_free(&entropy);
+        mbedtls_ctr_drbg_free(&ctr_drbg);
+        return SA_STATUS_INTERNAL_ERROR;
+    }
+    
+    // Write lengths
+    uint32_t* lengths = (uint32_t*)key_data;
+    lengths[0] = (uint32_t)p_length;
+    lengths[1] = (uint32_t)g_length;
+    lengths[2] = (uint32_t)x_size;
+    
+    // Copy P, G, X
+    memcpy(key_data + 12, p, p_length);
+    memcpy(key_data + 12 + p_length, g, g_length);
+    memcpy(key_data + 12 + p_length + g_length, x, x_size);
+    
+    // Store the DH parameters for type_parameters
+    sa_type_parameters type_parameters;
+    memory_memset_unoptimizable(&type_parameters, 0, sizeof(type_parameters));
+    memcpy(type_parameters.dh_parameters.p, p, p_length);
+    type_parameters.dh_parameters.p_length = p_length;
+    memcpy(type_parameters.dh_parameters.g, g, g_length);
+    type_parameters.dh_parameters.g_length = g_length;
+    
+    // Create the stored key with combined P, G, X data
+    sa_status status = stored_key_create(stored_key, rights, NULL, SA_KEY_TYPE_DH, &type_parameters, p_length, 
+            key_data, key_data_length);
+    
+    memory_secure_free(key_data);
+    memory_secure_free(x);
+    mbedtls_mpi_free(&mpi_p);
+    mbedtls_mpi_free(&mpi_g);
+    mbedtls_dhm_free(&dhm);
+    mbedtls_entropy_free(&entropy);
+    mbedtls_ctr_drbg_free(&ctr_drbg);
     return status;
 }

@@ -51,9 +51,9 @@ static void client_create() {
 }
 
 void* client_session() {
-    if (session != NULL) {
-        return session;
-    }
+    // FIX: Must check session inside mutex to prevent race condition
+    // Previously, the unprotected read caused data races where
+    // one thread could read session while another thread was writing to it.
 
     call_once(&mutex_flag, client_mutex_create);
 
@@ -63,7 +63,7 @@ void* client_session() {
     }
 
     do {
-        // someone may have created a client underneath us
+        // Check if session already created (protected by mutex)
         if (session != NULL) {
             break;
         }

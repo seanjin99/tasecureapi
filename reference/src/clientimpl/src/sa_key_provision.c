@@ -18,9 +18,9 @@
 
 #include "client.h"
 #include "log.h"
-#include "ta_client.h"
-#include "sa_key_provision_impl.h"
 #include "sa.h"
+#include "sa_key_provision_impl.h"
+#include "ta_client.h"
 #include <stdbool.h>
 
 sa_status sa_key_provision_ta (

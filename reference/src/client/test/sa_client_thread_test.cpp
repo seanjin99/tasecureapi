@@ -27,9 +27,7 @@ sa_status client_thread_verify(
         sa_key key,
         sa_crypto_cipher_context cipher_context,
         sa_crypto_mac_context mac_context,
-        sa_svp_buffer svp_buffer,
-        void* svp_memory,
-        size_t svp_memory_size) {
+        std::vector<uint8_t>* clear_buffer) {
 
     sa_header header;
     sa_status status = sa_key_header(&header, key);
@@ -55,30 +53,11 @@ sa_status client_thread_verify(
         return SA_STATUS_INVALID_PARAMETER;
     }
 
-    if (sa_svp_supported() == SA_STATUS_OK) {
-        sa_svp_offset offsets = {0, 0, in_buffer.size()};
-        status = sa_svp_buffer_write(svp_buffer, in_buffer.data(), in_buffer.size(), &offsets, 1);
-        if (status != SA_STATUS_OK) {
-            ERROR("svp %d was not found in a thread different from the one it was created in", svp_buffer);
-            return SA_STATUS_INVALID_PARAMETER;
-        }
-
-        auto new_svp_buffer = std::shared_ptr<sa_svp_buffer>(
-                new sa_svp_buffer(INVALID_HANDLE),
-                [](const sa_svp_buffer* p) {
-                    if (p != nullptr) {
-                        if (*p != INVALID_HANDLE) {
-                            void* svp_memory;
-                            size_t svp_memory_size;
-                            sa_svp_buffer_release(&svp_memory, &svp_memory_size, *p);
-                        }
-
-                        delete p;
-                    }
-                });
-        status = sa_svp_buffer_create(new_svp_buffer.get(), svp_memory, svp_memory_size);
-        if (status != SA_STATUS_OK)
-            ERROR("sa_svp_buffer_create failed");
+    // Test clear buffer access in different thread
+    if (clear_buffer != nullptr) {
+        // Write some data to the clear buffer
+        std::copy(in_buffer.begin(), in_buffer.end(), clear_buffer->begin());
+        status = SA_STATUS_OK;
     } else {
         status = SA_STATUS_OK;
     }
@@ -103,34 +82,12 @@ namespace {
         status = sa_crypto_mac_init(mac_context.get(), SA_MAC_ALGORITHM_CMAC, *key, nullptr);
         ASSERT_EQ(status, SA_STATUS_OK);
 
-        void* svp_memory = nullptr;
-        auto svp_buffer = std::shared_ptr<sa_svp_buffer>(
-                new sa_svp_buffer(INVALID_HANDLE),
-                [](const sa_svp_buffer* p) {
-                    if (p != nullptr) {
-                        if (*p != INVALID_HANDLE) {
-                            sa_svp_buffer_free(*p);
-                        }
-
-                        delete p;
-                    }
-                });
-
-        if (sa_svp_supported() == SA_STATUS_OK) {
-            status = sa_svp_memory_alloc(&svp_memory, AES_BLOCK_SIZE);
-            ASSERT_EQ(status, SA_STATUS_OK);
-            status = sa_svp_buffer_create(svp_buffer.get(), svp_memory, AES_BLOCK_SIZE);
-            ASSERT_EQ(status, SA_STATUS_OK);
-
-            std::vector<uint8_t> in(AES_BLOCK_SIZE);
-            std::fill(in.begin(), in.end(), 0xff);
-            sa_svp_offset offset = {0, 0, in.size()};
-            status = sa_svp_buffer_write(*svp_buffer, in.data(), in.size(), &offset, 1);
-            ASSERT_EQ(status, SA_STATUS_OK);
-        }
+        // Use clear memory buffer instead of SVP
+        std::vector<uint8_t> clear_buffer(AES_BLOCK_SIZE);
+        std::fill(clear_buffer.begin(), clear_buffer.end(), 0xff);
 
         std::future<sa_status> future = std::async(client_thread_verify, *key, *cipher_context, *mac_context,
-                *svp_buffer, svp_memory, AES_BLOCK_SIZE);
+                &clear_buffer);
         ASSERT_EQ(SA_STATUS_OK, future.get());
     }
 } // namespace
