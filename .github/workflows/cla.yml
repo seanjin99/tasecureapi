@@ -1,8 +1,7 @@
-# CLA check disabled - rdkcentral workflow requires access to rdkcentral/cla_signatures repo
 name: "CLA"
 
 permissions:
-  contents: write  # Changed from 'read' to 'write' to allow creating signature file
+  contents: read
   pull-requests: write
   actions: write
   statuses: write
@@ -16,11 +15,6 @@ on:
 jobs:
   CLA-Lite:
     name: "Signature"
-    permissions:
-      contents: write
-      pull-requests: write
-      actions: write
-      statuses: write
     uses: rdkcentral/cmf-actions/.github/workflows/cla.yml@v1
     secrets:
       PERSONAL_ACCESS_TOKEN: ${{ secrets.CLA_ASSISTANT }}
