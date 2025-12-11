@@ -108,3 +108,47 @@ if(EXISTS "${GCM_PATCH_FILE}" AND EXISTS "${MBEDTLS_SOURCE_DIR}/library/gcm.c")
 endif()
 
 # (Reverted) ECP fixed-point optimization patch application removed due to no measurable improvement
+
+# Apply CTR counter increment performance optimization (backported from mbedTLS 3.6.2 commit 591ff05)
+# NOTE: This is a PERFORMANCE optimization only - processes counter in 32-bit chunks for speed.
+set(CTR_PATCH_FILE "${CMAKE_CURRENT_LIST_DIR}/patches_mbedtls/mbedtls-ctr-counter-fix.patch")
+if(EXISTS "${CTR_PATCH_FILE}")
+    message(STATUS "Applying mbedTLS CTR counter performance optimization...")
+
+    # Copy the ctr.h header file from patches directory
+    set(CTR_H_SOURCE "${CMAKE_CURRENT_LIST_DIR}/patches_mbedtls/ctr.h")
+    set(CTR_H_PATH "${MBEDTLS_SOURCE_DIR}/library/ctr.h")
+    if(NOT EXISTS "${CTR_H_PATH}" AND EXISTS "${CTR_H_SOURCE}")
+        file(COPY "${CTR_H_SOURCE}" DESTINATION "${MBEDTLS_SOURCE_DIR}/library/")
+        message(STATUS "Copied library/ctr.h header file from patches directory")
+    endif()
+
+    # Now patch aes.c to use the new counter increment function
+    if(EXISTS "${MBEDTLS_SOURCE_DIR}/library/aes.c")
+        file(READ "${MBEDTLS_SOURCE_DIR}/library/aes.c" AES_CONTENT)
+
+        # Add include directive if not already present
+        if(NOT AES_CONTENT MATCHES "#include \"ctr.h\"")
+            string(REGEX REPLACE
+                "(#include \"mbedtls/aesni.h\")"
+                "\\1\\n#include \"ctr.h\""
+                AES_CONTENT "${AES_CONTENT}")
+            message(STATUS "Added #include \"ctr.h\" to aes.c")
+        endif()
+
+        # Replace the counter increment loop with the optimized function
+        string(REGEX REPLACE
+            "for\\( i = 16; i > 0; i-- \\)\n[ \t]*if\\( \\+\\+nonce_counter\\[i - 1\\] != 0 \\)\n[ \t]*break;"
+            "mbedtls_ctr_increment_counter(nonce_counter);"
+            AES_CONTENT "${AES_CONTENT}")
+
+        # Remove unused variable 'i' from the declaration to fix warning
+        string(REGEX REPLACE
+            "int c, i;"
+            "int c;"
+            AES_CONTENT "${AES_CONTENT}")
+
+        file(WRITE "${MBEDTLS_SOURCE_DIR}/library/aes.c" "${AES_CONTENT}")
+        message(STATUS "Successfully applied CTR counter performance optimization to aes.c")
+    endif()
+endif()
