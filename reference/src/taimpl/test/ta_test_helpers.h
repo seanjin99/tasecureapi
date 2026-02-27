@@ -20,7 +20,7 @@
 #define TA_TEST_HELPERS_H
 
 #include "ta_sa.h"
-#include "test_helpers.h"
+#include "test_helpers_mbedtls.h"
 #include <memory>
 #include <vector>
 

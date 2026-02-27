@@ -23,7 +23,7 @@
 #include "log.h"
 #include "sa.h"
 #include "sa_public_key.h"
-#include "test_helpers.h"
+#include "test_helpers_openssl.h"
 #include <ctime>
 #include <memory>
 #include <openssl/ec.h>

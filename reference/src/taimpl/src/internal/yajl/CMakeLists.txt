@@ -5,17 +5,21 @@ project(yajl_provider C)
 
 include(FetchContent)
 
+# Include centralized dependency versions
+include(${CMAKE_SOURCE_DIR}/cmake/deps.cmake)
+
 # Set policy to allow FetchContent_Populate (we need this to avoid YAJL's old CMakeLists.txt)
 if(POLICY CMP0169)
     cmake_policy(SET CMP0169 OLD)
 endif()
 
 message(STATUS "Configuring YAJL provider...")
+message(STATUS "  Using: ${DEPS_YAJL_GIT_REPO} @ ${DEPS_YAJL_GIT_TAG}")
 
 FetchContent_Declare(
     yajl
-    GIT_REPOSITORY https://github.com/lloyd/yajl.git
-    GIT_TAG        2.1.0
+    GIT_REPOSITORY ${DEPS_YAJL_GIT_REPO}
+    GIT_TAG        ${DEPS_YAJL_GIT_TAG}
     GIT_SHALLOW    TRUE
 )
 

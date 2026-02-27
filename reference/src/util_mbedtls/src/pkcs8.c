@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "pkcs8.h" // NOLINT
+#include "pkcs8_mbedtls.h" // NOLINT
 #include "log.h"
 #include "mbedtls/asn1.h"
 #include "mbedtls/ecp.h"

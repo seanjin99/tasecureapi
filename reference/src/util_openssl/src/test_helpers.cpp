@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "test_helpers.h"
+#include "test_helpers_openssl.h"
 #include "digest_mechanism.h"
 #include "digest_util.h"
 #include "log.h"

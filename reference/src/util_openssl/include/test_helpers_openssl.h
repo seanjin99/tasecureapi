@@ -1,5 +1,5 @@
-/**
- * Copyright 2020-2022 Comcast Cable Communications Management, LLC
+/*
+ * Copyright 2020-2023 Comcast Cable Communications Management, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,20 +16,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef TEST_HELPERS_H
-#define TEST_HELPERS_H
+#ifndef TEST_HELPERS_OPENSSL_H
+#define TEST_HELPERS_OPENSSL_H
 
 #include "common.h"
-#include "sa_types.h"
+#include "sa_rights.h"
+#include <memory>
+#include <openssl/evp.h>
 #include <vector>
 
 #define UNSUPPORTED_KEY static_cast<sa_key>(INVALID_HANDLE - 1)
 #define UNSUPPORTED_CIPHER (sa_crypto_cipher_context)(INVALID_HANDLE - 1)
 
-namespace test_helpers_mbedtls {
+namespace test_helpers_openssl {
 
     /**
-     * Generate random bytes using mbedTLS.
+     * Generate random bytes using OpenSSL.
      *
      * @param[in] size the number of bytes to generate.
      * @return the random bytes.
@@ -37,20 +39,22 @@ namespace test_helpers_mbedtls {
     std::vector<uint8_t> random(size_t size);
 
     /**
-     * Compute a digest using mbedTLS.
+     * Compute SHA digest value over inputs.
      *
-     * @param[in] digest_algorithm the digest algorithm.
-     * @param[in] in1 the first input.
-     * @param[in] in2 the second input.
-     * @param[in] in3 the third input.
-     * @return the digest.
+     * @param[out] out output buffer for computed digest value.
+     * @param[in] digest_algorithm the algorithm to use in the digest.
+     * @param[in] in1 first input buffer.
+     * @param[in] in2 second input buffer.
+     * @param[in] in3 third input buffer.
+     * @return status of the operation
      */
-    std::vector<uint8_t> digest(
+    bool digest(
+            std::vector<uint8_t>& out,
             sa_digest_algorithm digest_algorithm,
             const std::vector<uint8_t>& in1,
-            const std::vector<uint8_t>& in2 = {},
-            const std::vector<uint8_t>& in3 = {});
+            const std::vector<uint8_t>& in2,
+            const std::vector<uint8_t>& in3);
 
-} // namespace test_helpers_mbedtls
+} // namespace test_helpers_openssl
 
-#endif // TEST_HELPERS_H
+#endif // TEST_HELPERS_OPENSSL_H

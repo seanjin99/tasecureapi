@@ -19,7 +19,7 @@
 #include "client_test_helpers.h"
 #include "digest_mechanism.h"
 #include "digest_util.h"
-#include "pkcs8.h"
+#include "pkcs8_openssl.h"
 #include "sa_public_key.h"
 #include <cstring>
 

@@ -18,6 +18,7 @@
 
 #include "hardware_rng.h"
 #include <string.h>
+#include <mbedtls/entropy.h>  // For MBEDTLS_ERR_ENTROPY_SOURCE_FAILED
 
 // ============================================================================
 // Platform Detection and Configuration
@@ -57,19 +58,34 @@ int hardware_rng_init(void) {
     }
     
     // Try /dev/hwrng first (dedicated hardware RNG)
-    hwrng_fd = open("/dev/hwrng", O_RDONLY | O_NONBLOCK);
-    if (hwrng_fd >= 0) {
-        rng_source = "/dev/hwrng";
-        return 0;
+    int test_fd = open("/dev/hwrng", O_RDONLY | O_NONBLOCK);
+    if (test_fd >= 0) {
+        // Test if hwrng is actually providing data
+        unsigned char test_byte;
+        ssize_t test_read = read(test_fd, &test_byte, 1);
+        if (test_read > 0) {
+            // hwrng is working, use it
+            hwrng_fd = test_fd;
+            rng_source = "/dev/hwrng";
+            return 0;
+        }
+        // hwrng opened but returned EAGAIN/0 bytes - not usable
+        close(test_fd);
     }
     
-    // Fallback to /dev/urandom (kernel CSPRNG, may use hardware)
+    // Fallback to /dev/urandom (kernel CSPRNG, always works)
     hwrng_fd = open("/dev/urandom", O_RDONLY);
     if (hwrng_fd >= 0) {
         rng_source = "/dev/urandom";
         return 0;
     }
     
+    // TODO: Consider using getrandom() syscall (Linux 3.17+) as a future fallback
+    // if neither /dev/hwrng nor /dev/urandom is available.
+    // #include <sys/random.h>
+    // ssize_t ret = getrandom(buf, len, 0);  // blocking until entropy pool ready
+    // getrandom() doesn't need a file descriptor, works in chroot/containers,
+    // and is the recommended primary entropy source on modern Linux kernels.
     rng_source = "none";
     return -1;
 }
@@ -87,24 +103,31 @@ int hardware_rng_poll(void *data, unsigned char *output, size_t len, size_t *ole
     if (hwrng_fd < 0) {
         if (hardware_rng_init() != 0) {
             *olen = 0;
-            return 0;  // Not critical error, just no entropy
+            return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
         }
     }
     
     ssize_t bytes_read = read(hwrng_fd, output, len);
     
-    if (bytes_read < 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            // Non-blocking mode, no data available yet
-            *olen = 0;
-            return 0;
+    // If read fails or returns 0, fallback to urandom on this call
+    if (bytes_read <= 0) {
+        // Even if we're supposed to be using urandom (from init),
+        // if read fails, try a fresh open as ultimate fallback
+        int urandom_fd = open("/dev/urandom", O_RDONLY);
+        if (urandom_fd >= 0) {
+            bytes_read = read(urandom_fd, output, len);
+            close(urandom_fd);
         }
-        *olen = 0;
-        return -1;
     }
     
-    *olen = (size_t)bytes_read;
-    return 0;
+    if (bytes_read > 0) {
+        *olen = (size_t)bytes_read;
+        return 0;
+    }
+    
+    // Still no bytes - this is a real failure
+    *olen = 0;
+    return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
 }
 
 const char* hardware_rng_get_info(void) {

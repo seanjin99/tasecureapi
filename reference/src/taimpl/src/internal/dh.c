@@ -20,6 +20,7 @@
 #include "log.h"
 #include "porting/memory.h"
 #include "stored_key_internal.h"
+#include "porting/rand.h"
 
 #include "pkcs12_mbedtls.h"
 #include <string.h>
@@ -640,31 +641,23 @@ sa_status dh_generate_key(
         mbedtls_dhm_free(&dhm);
         return SA_STATUS_INTERNAL_ERROR;
     }
-    mbedtls_entropy_context entropy;
-    mbedtls_ctr_drbg_context ctr_drbg;
-    mbedtls_entropy_init(&entropy);
-    mbedtls_ctr_drbg_init(&ctr_drbg);
-    const char* pers = "dh_genkey";
-    ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char*)pers, strlen(pers));
-    if (ret != 0) {
-        ERROR("mbedtls_ctr_drbg_seed failed: -0x%04x", -ret);
+    // Use global DRBG context (already initialized and seeded)
+    mbedtls_ctr_drbg_context* ctr_drbg = (mbedtls_ctr_drbg_context*)rand_get_drbg_context();
+    if (ctr_drbg == NULL) {
+        ERROR("rand_get_drbg_context failed");
         memory_secure_free(x);
         mbedtls_mpi_free(&mpi_p);
         mbedtls_mpi_free(&mpi_g);
         mbedtls_dhm_free(&dhm);
-        mbedtls_entropy_free(&entropy);
-        mbedtls_ctr_drbg_free(&ctr_drbg);
         return SA_STATUS_INTERNAL_ERROR;
     }
-    ret = mbedtls_dhm_make_public(&dhm, (int)x_size, x, x_size, mbedtls_ctr_drbg_random, &ctr_drbg);
+    ret = mbedtls_dhm_make_public(&dhm, (int)x_size, x, x_size, mbedtls_ctr_drbg_random, ctr_drbg);
     if (ret != 0) {
         ERROR("mbedtls_dhm_make_public failed: -0x%04x", -ret);
         memory_secure_free(x);
         mbedtls_mpi_free(&mpi_p);
         mbedtls_mpi_free(&mpi_g);
         mbedtls_dhm_free(&dhm);
-        mbedtls_entropy_free(&entropy);
-        mbedtls_ctr_drbg_free(&ctr_drbg);
         // Check if it's a bad input parameter error (mbedTLS combines error codes)
         // MBEDTLS_ERR_DHM_MAKE_PUBLIC_FAILED is -0x3280, and it may be combined with
         // low-level errors like MBEDTLS_ERR_MPI_BAD_INPUT_DATA to give -0x3284
@@ -691,8 +684,6 @@ sa_status dh_generate_key(
         mbedtls_mpi_free(&mpi_p);
         mbedtls_mpi_free(&mpi_g);
         mbedtls_dhm_free(&dhm);
-        mbedtls_entropy_free(&entropy);
-        mbedtls_ctr_drbg_free(&ctr_drbg);
         return SA_STATUS_INTERNAL_ERROR;
     }
     
@@ -707,8 +698,6 @@ sa_status dh_generate_key(
         mbedtls_mpi_free(&mpi_p);
         mbedtls_mpi_free(&mpi_g);
         mbedtls_dhm_free(&dhm);
-        mbedtls_entropy_free(&entropy);
-        mbedtls_ctr_drbg_free(&ctr_drbg);
         return SA_STATUS_INTERNAL_ERROR;
     }
     
@@ -740,7 +729,5 @@ sa_status dh_generate_key(
     mbedtls_mpi_free(&mpi_p);
     mbedtls_mpi_free(&mpi_g);
     mbedtls_dhm_free(&dhm);
-    mbedtls_entropy_free(&entropy);
-    mbedtls_ctr_drbg_free(&ctr_drbg);
     return status;
 }

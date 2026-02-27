@@ -152,3 +152,29 @@ if(EXISTS "${CTR_PATCH_FILE}")
         message(STATUS "Successfully applied CTR counter performance optimization to aes.c")
     endif()
 endif()
+
+# Apply ARM64 (aarch64) bignum optimization directly
+# This backports aarch64 assembly from newer mbedTLS versions to 2.16.10
+set(BN_MUL_H "${MBEDTLS_SOURCE_DIR}/include/mbedtls/bn_mul.h")
+
+#if(EXISTS "${BN_MUL_H}")
+if(FALSE)
+    file(READ "${BN_MUL_H}" BN_MUL_CONTENT)
+
+    # Check if aarch64 optimization is already present
+    if(NOT BN_MUL_CONTENT MATCHES "defined\\(__aarch64__\\)")
+        message(STATUS "Applying ARM64 (aarch64) bignum hardware acceleration optimization...")
+
+        # Find the line after "#endif /* AMD64 */" and inject aarch64 code
+        # Match AMD64 pattern: INIT opens asm, CORE adds instructions, STOP closes asm
+        string(REGEX REPLACE
+            "(#endif /\\* AMD64 \\*/)"
+            "\\1\n\n#if defined(__aarch64__)\n\n#define MULADDC_INIT                                        \\\\\n    asm(\n\n#define MULADDC_CORE                                            \\\\\n        \"ldr x4, [%1]               \\\\n\\\\t\"                       \\\\\n        \"mul x5, x4, %3             \\\\n\\\\t\"                       \\\\\n        \"umulh x6, x4, %3           \\\\n\\\\t\"                       \\\\\n        \"ldr x7, [%2]               \\\\n\\\\t\"                       \\\\\n        \"adds x7, x7, x5            \\\\n\\\\t\"                       \\\\\n        \"adc x6, x6, xzr            \\\\n\\\\t\"                       \\\\\n        \"adds x7, x7, %0            \\\\n\\\\t\"                       \\\\\n        \"adc %0, x6, xzr            \\\\n\\\\t\"                       \\\\\n        \"str x7, [%2]               \\\\n\\\\t\"                       \\\\\n        \"add %1, %1, #8             \\\\n\\\\t\"                       \\\\\n        \"add %2, %2, #8             \\\\n\\\\t\"\n\n#define MULADDC_STOP                                            \\\\\n         : \"+r\" (c), \"+r\" (s), \"+r\" (d)                          \\\\\n         : \"r\" (b)                                              \\\\\n         : \"x4\", \"x5\", \"x6\", \"x7\", \"cc\", \"memory\"               \\\\\n    );\n\n#endif /* Aarch64 */"
+            BN_MUL_CONTENT "${BN_MUL_CONTENT}")
+
+        file(WRITE "${BN_MUL_H}" "${BN_MUL_CONTENT}")
+        message(STATUS "✓ Successfully applied ARM64 aarch64 bignum hardware acceleration")
+    else()
+        message(STATUS "ARM64 aarch64 optimization already present in bn_mul.h")
+    endif()
+endif()

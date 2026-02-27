@@ -44,7 +44,9 @@ if (DEFINED DISABLE_CENC_1000000_TESTS)
     set(CMAKE_C_FLAGS "-DDISABLE_CENC_1000000_TESTS ${CMAKE_C_FLAGS}")
 endif ()
 
-find_package(OpenSSL REQUIRED)
+if(BUILD_UTIL_OPENSSL)
+    find_package(OpenSSL REQUIRED)
+endif()
 include_directories(AFTER SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 find_package(Threads REQUIRED)
 # YAJL provider is built from source in src/internal/yajl/
@@ -250,7 +252,9 @@ if (COVERAGE AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
             )
 endif ()
 
-find_package(OpenSSL REQUIRED)
+if(BUILD_UTIL_OPENSSL)
+    find_package(OpenSSL REQUIRED)
+endif()
 
 target_compile_options(taimpl PRIVATE -Werror -Wall -Wextra -Wno-unused-parameter)
 
@@ -276,19 +280,21 @@ if (BUILD_TESTS)
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../util_mbedtls/include>
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/internal>
             ${MBEDTLS_INCLUDE_DIR}
-            ${OPENSSL_INCLUDE_DIR}
             )
 
     target_compile_options(taimpltest PRIVATE -Werror -Wall -Wextra -Wno-unused-parameter)
 
     target_link_libraries(taimpltest
             PRIVATE
+            gtest
+            gmock
             gtest_main
             gmock_main
             taimpl
             util
             util_mbedtls
             ${MBEDTLS_LIBRARIES}
+            stdc++
             )
 
     target_clangformat_setup(taimpltest)

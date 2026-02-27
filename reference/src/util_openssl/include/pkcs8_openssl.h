@@ -17,15 +17,15 @@
  */
 
 /** @section Description
- * @file pkcs8.h
+ * @file pkcs8_openssl.h
  *
- * This file contains the functions and structures providing PKCS8 processing.
+ * This file contains the functions and structures providing PKCS8 processing using OpenSSL.
  */
 
-#ifndef PKCS8_H
-#define PKCS8_H
+#ifndef PKCS8_OPENSSL_H
+#define PKCS8_OPENSSL_H
 
-#include "mbedtls_header.h"
+#include <openssl/evp.h>
 
 #ifdef __cplusplus
 #include <cstdbool>
@@ -35,28 +35,28 @@ extern "C" {
 #endif
 
 /**
- * Converts a pk_context private key into a OneAsymmetricKey (PKCS 8) structure.
+ * Converts an EVP_PKEY private key into a OneAsymmetricKey (PKCS 8) structure.
  *
  * @param[out] out the encoded private key.
  * @param[in/out] out_length the length of the encoded key.
- * @param pk the private key to convert.
+ * @param evp_pkey the private key to convert.
  * @return true if successful, false if not.
  */
-bool pk_to_pkcs8(
+bool evp_pkey_to_pkcs8(
         void* out,
         size_t* out_length,
-        mbedtls_pk_context* pk);
+        EVP_PKEY* evp_pkey);
 
 /**
- * Converts a OneAsymmetricKey (PKCS 8) structure into pk_context private key.
+ * Converts a OneAsymmetricKey (PKCS 8) structure into EVP_PKEY private key.
  *
- * @param[in] expected_type the expected type of the key (MBEDTLS_PK_NONE to skip check).
+ * @param[in] type the type of the key.
  * @param[in] in the encoded private key.
  * @param[in] in_length the length of the encoded key.
- * @return the private key or NULL if not successful. Caller must free with mbedtls_pk_free() and free().
+ * @return the private key or NULL if not successful. Caller must free with EVP_PKEY_free().
  */
-mbedtls_pk_context* pk_from_pkcs8(
-        mbedtls_pk_type_t expected_type,
+EVP_PKEY* evp_pkey_from_pkcs8(
+        int type,
         const void* in,
         size_t in_length);
 
@@ -64,4 +64,4 @@ mbedtls_pk_context* pk_from_pkcs8(
 }
 #endif
 
-#endif //PKCS8_H
+#endif //PKCS8_OPENSSL_H

@@ -90,13 +90,19 @@ target_include_directories(saclientimpl
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/internal>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/porting>
-        ${OPENSSL_INCLUDE_DIR}
+        ${MBEDTLS_INCLUDE_DIR}
         ${YAJL_INCLUDE_DIR}
         )
 
+if(BUILD_UTIL_OPENSSL)
+    target_include_directories(saclientimpl PRIVATE ${OPENSSL_INCLUDE_DIR})
+    target_link_libraries(saclientimpl PRIVATE ${OPENSSL_CRYPTO_LIBRARY})
+else()
+    target_link_libraries(saclientimpl PRIVATE ${MBEDTLS_LIBRARIES})
+endif()
+
 target_link_libraries(saclientimpl
         PRIVATE
-        ${OPENSSL_CRYPTO_LIBRARY}
         ${CMAKE_THREAD_LIBS_INIT}
         ${YAJL_LIBRARY}
         taimpl

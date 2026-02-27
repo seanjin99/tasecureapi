@@ -20,6 +20,7 @@
 #include "log.h"
 #include "ta_test_helpers.h"
 #include "gtest/gtest.h"
+#include <vector>
 
 using namespace ta_test_helpers;
 
@@ -53,6 +54,9 @@ namespace {
         sa_status const status = object_store_add(&slot, store.get(), &num, ta_uuid());
         ASSERT_EQ(status, SA_STATUS_OK);
         ASSERT_NE(slot, SLOT_INVALID);
+
+        // Clean up to avoid leak warning on shutdown
+        ASSERT_EQ(object_store_remove(store.get(), slot, ta_uuid()), SA_STATUS_OK);
     }
 
     TEST(ObjectStoreAdd, failsWhenFull) {
@@ -60,15 +64,23 @@ namespace {
         std::shared_ptr<object_store_t> const store(object_store_init(noop, num, "TEST"), object_store_shutdown);
         ASSERT_NE(store, nullptr);
 
-        slot_t slot = SLOT_INVALID;
+        std::vector<slot_t> slots;
         for (size_t i = 0; i < num; ++i) {
+            slot_t slot = SLOT_INVALID;
             sa_status const status = object_store_add(&slot, store.get(), &num, ta_uuid());
             ASSERT_EQ(status, SA_STATUS_OK);
+            slots.push_back(slot);
         }
 
         // allocate one past the limit
-        ASSERT_EQ(object_store_add(&slot, store.get(), &num, ta_uuid()),
+        slot_t extra_slot = SLOT_INVALID;
+        ASSERT_EQ(object_store_add(&extra_slot, store.get(), &num, ta_uuid()),
                 SA_STATUS_NO_AVAILABLE_RESOURCE_SLOT);
+
+        // Clean up all slots to avoid leak warning on shutdown
+        for (slot_t s : slots) {
+            ASSERT_EQ(object_store_remove(store.get(), s, ta_uuid()), SA_STATUS_OK);
+        }
     }
 
     TEST(ObjectStoreAcquire, nominal) {
@@ -84,11 +96,14 @@ namespace {
         void* object = nullptr;
         status = object_store_acquire(&object, store.get(), slot, ta_uuid());
         ASSERT_EQ(status, SA_STATUS_OK);
-        std::shared_ptr<void> const obj(object, [&](void* object) {
-            sa_status const status = object_store_release(store.get(), slot, object, ta_uuid());
-            ASSERT_EQ(status, SA_STATUS_OK);
-        });
         ASSERT_NE(object, nullptr);
+
+        // Release the acquired reference
+        status = object_store_release(store.get(), slot, object, ta_uuid());
+        ASSERT_EQ(status, SA_STATUS_OK);
+
+        // Remove the object from store to avoid leak warning
+        ASSERT_EQ(object_store_remove(store.get(), slot, ta_uuid()), SA_STATUS_OK);
     }
 
     TEST(ObjectStoreAcquire, failsWithInvalidUuid) {
@@ -107,10 +122,10 @@ namespace {
         void* object = nullptr;
         status = object_store_acquire(&object, store.get(), slot, &wrong_uuid);
         ASSERT_EQ(status, SA_STATUS_OPERATION_NOT_ALLOWED);
-        std::shared_ptr<void> const obj(object, [&](void* object) {
-            object_store_release(store.get(), slot, object, ta_uuid());
-        });
         ASSERT_EQ(object, nullptr);
+
+        // Remove the object from store to avoid leak warning
+        ASSERT_EQ(object_store_remove(store.get(), slot, ta_uuid()), SA_STATUS_OK);
     }
 
     TEST(ObjectStoreRemove, nominal) {

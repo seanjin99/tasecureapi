@@ -77,8 +77,8 @@ bool memory_is_valid_clear(
         return false;
     }
 
-    size_t temp;
-    if (add_overflow((unsigned long) memory_location, size, &temp)) {
+    unsigned long temp;
+    if (add_overflow((unsigned long) memory_location, (unsigned long) size, &temp)) {
         ERROR("Integer overflow");
         return false;
     }

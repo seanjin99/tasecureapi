@@ -601,7 +601,7 @@ static sa_status ta_invoke_key_unwrap(
             algorithm_parameters = &parameters_chacha20_poly1305;
             break;
 
-        case SA_CIPHER_ALGORITHM_EC_ELGAMAL:
+        case SA_CIPHER_ALGORITHM_EC_ELGAMAL: {
             if (params[2].mem_ref == NULL) {
                 ERROR("NULL params[2].mem_ref");
                 return SA_STATUS_NULL_PARAMETER;
@@ -612,9 +612,13 @@ static sa_status ta_invoke_key_unwrap(
                 return SA_STATUS_INVALID_PARAMETER;
             }
 
-            memcpy(&parameters_ec_elgamal, params[2].mem_ref, params[2].mem_ref_size);
-            algorithm_parameters = params[2].mem_ref;
+            sa_unwrap_parameters_ec_elgamal_s parameters_ec_elgamal_s;
+            memcpy(&parameters_ec_elgamal_s, params[2].mem_ref, params[2].mem_ref_size);
+            parameters_ec_elgamal.offset = parameters_ec_elgamal_s.offset;
+            parameters_ec_elgamal.key_length = parameters_ec_elgamal_s.key_length;
+            algorithm_parameters = &parameters_ec_elgamal;
             break;
+        }
 
         case SA_CIPHER_ALGORITHM_RSA_OAEP:
             if (params[2].mem_ref == NULL) {
@@ -1541,7 +1545,8 @@ static sa_status ta_invoke_process_common_encryption(
     sa_sample sample;
     do {
         sample.subsample_count = process_common_encryption->subsample_count;
-        if (params[1].mem_ref_size != sizeof(sa_subsample_length) * sample.subsample_count) {
+        // Note: Client sends sa_subsample_length_s (uint64_t fields), not sa_subsample_length (size_t)
+        if (params[1].mem_ref_size != sizeof(sa_subsample_length_s) * sample.subsample_count) {
             ERROR("params[1].mem_ref_size is invalid");
             return SA_STATUS_INVALID_PARAMETER;
         }
@@ -1596,7 +1601,15 @@ static sa_status ta_invoke_process_common_encryption(
 
         status = ta_sa_process_common_encryption(1, &sample, context->client, uuid);
 
+        // Propagate buffer offsets back to the command struct so the client
+        // can advance its buffer positions between samples.
+        if (process_common_encryption->out_buffer_type == SA_BUFFER_TYPE_CLEAR) {
+            process_common_encryption->out_offset = out.context.clear.offset;
+        }
 
+        if (process_common_encryption->in_buffer_type == SA_BUFFER_TYPE_CLEAR) {
+            process_common_encryption->in_offset = in.context.clear.offset;
+        }
 
     } while (false);
 

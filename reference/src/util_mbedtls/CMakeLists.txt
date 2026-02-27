@@ -24,7 +24,8 @@ set(UTIL_MBEDTLS_HEADERS
         include/digest_util_mbedtls.h
         include/hardware_rng.h
         include/pkcs12_mbedtls.h
-        include/pkcs8.h
+        include/pkcs8_mbedtls.h
+        include/test_helpers_mbedtls.h
         include/test_process_common_encryption_mbedtls.h
         )
 
@@ -79,9 +80,12 @@ if (BUILD_TESTS)
 
     target_link_libraries(util_mbedtls_test
             PRIVATE
+            gtest
+            gmock
             gmock_main
             util_mbedtls
             ${MBEDTLS_LIBRARIES}
+            stdc++
             )
 
     target_clangformat_setup(util_mbedtls_test)

@@ -11,7 +11,7 @@
  */
 
 #include "test_process_common_encryption_mbedtls.h"
-#include "test_helpers.h"
+#include "test_helpers_mbedtls.h"
 #include "common.h"
 #include "log.h"
 #include "sa.h"

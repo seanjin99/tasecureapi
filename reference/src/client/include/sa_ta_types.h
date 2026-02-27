@@ -478,6 +478,12 @@ typedef struct {
     uint64_t bytes_of_protected_data;
 } sa_subsample_length_s;
 
+// Compile-time size verification for transport structs.
+// These structs use fixed-width types (uint64_t) to ensure consistent wire format
+// across architectures (ARM32, ARM64, x86_64). A size mismatch here means the
+// client and TA will disagree on struct layout, causing silent data corruption.
+_Static_assert(sizeof(sa_subsample_length_s) == 16, "sa_subsample_length_s must be 16 bytes");
+
 #ifdef __cplusplus
 }
 #endif

@@ -5,12 +5,16 @@ project(edwards_provider C)
 
 include(FetchContent)
 
+# Include centralized dependency versions
+include(${CMAKE_SOURCE_DIR}/cmake/deps.cmake)
+
 message(STATUS "Configuring ed25519-donna provider...")
+message(STATUS "  Using: ${DEPS_ED25519_DONNA_GIT_REPO} @ ${DEPS_ED25519_DONNA_GIT_TAG}")
 
 FetchContent_Declare(
     ed25519_donna
-    GIT_REPOSITORY https://github.com/floodyberry/ed25519-donna.git
-    GIT_TAG        master
+    GIT_REPOSITORY ${DEPS_ED25519_DONNA_GIT_REPO}
+    GIT_TAG        ${DEPS_ED25519_DONNA_GIT_TAG}
     GIT_SHALLOW    TRUE
 )
 

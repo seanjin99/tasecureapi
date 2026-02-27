@@ -177,6 +177,7 @@ static typej_unpacked_t* unpack_typej(
                     unpacked->header_b64_length, true)) {
             ERROR("b64_decode failed");
             memory_secure_free(unpacked->header);
+            unpacked->header = NULL;
             break;
         }
 
@@ -186,6 +187,7 @@ static typej_unpacked_t* unpack_typej(
                     unpacked->payload_b64_length, true)) {
             ERROR("b64_decode failed");
             memory_secure_free(unpacked->payload);
+            unpacked->payload = NULL;
             break;
         }
 
@@ -194,6 +196,7 @@ static typej_unpacked_t* unpack_typej(
         if (!b64_decode(unpacked->mac, &unpacked->mac_length, unpacked->mac_b64, unpacked->mac_b64_length, true)) {
             ERROR("b64_decode failed");
             memory_secure_free(unpacked->mac);
+            unpacked->mac = NULL;
             break;
         }
 

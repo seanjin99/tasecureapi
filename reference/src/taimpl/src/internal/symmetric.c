@@ -27,7 +27,6 @@
 #include "sa_types.h"
 #include "stored_key_internal.h"
 #include <memory.h>
-#include <stdio.h>
 
 
 struct symmetric_context_s {
@@ -1999,7 +1998,6 @@ sa_status symmetric_context_set_iv(
         // AES-CBC/CTR uses mbedTLS cipher API - set IV
         // Note: Cast away const since mbedTLS API requires non-const, but operation is logically const from caller perspective
         symmetric_context_t* mutable_context = (symmetric_context_t*)context;
-        
         int ret = mbedtls_cipher_set_iv(&mutable_context->ctx.cipher_ctx, iv, iv_length);
         if (ret != 0) {
             ERROR("mbedtls_cipher_set_iv failed: -0x%04x", -ret);
@@ -2050,9 +2048,10 @@ sa_status symmetric_context_reinit_for_sample(
     // For CTR mode, we need to completely reinitialize the cipher context
     // because mbedTLS doesn't properly reset internal buffers with just reset+setkey
     
-    // Get the cipher info for re-setup
-    const mbedtls_cipher_info_t* cipher_info = mbedtls_cipher_info_from_type(
-        mbedtls_cipher_get_type(&mutable_context->ctx.cipher_ctx));
+    // Compute cipher type from key length (don't trust mbedtls_cipher_get_type on stale context!)
+    mbedtls_cipher_type_t cipher_type = (key_length == SYM_128_KEY_SIZE) ? 
+        MBEDTLS_CIPHER_AES_128_CTR : MBEDTLS_CIPHER_AES_256_CTR;
+    const mbedtls_cipher_info_t* cipher_info = mbedtls_cipher_info_from_type(cipher_type);
     
     if (cipher_info == NULL) {
         ERROR("mbedtls_cipher_info_from_type failed");

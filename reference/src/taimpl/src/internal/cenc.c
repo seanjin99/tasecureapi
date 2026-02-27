@@ -26,7 +26,6 @@
 #include "symmetric.h"
 #include <arpa/inet.h>
 #include <memory.h>
-
 #ifdef __APPLE__
 #define htobe64(x) htonll(x)
 #define be64toh(x) ntohll(x)

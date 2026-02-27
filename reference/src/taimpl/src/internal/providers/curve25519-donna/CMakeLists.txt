@@ -5,12 +5,16 @@ project(curve25519_provider C)
 
 include(FetchContent)
 
+# Include centralized dependency versions
+include(${CMAKE_SOURCE_DIR}/cmake/deps.cmake)
+
 message(STATUS "Configuring curve25519-donna provider...")
+message(STATUS "  Using: ${DEPS_CURVE25519_DONNA_GIT_REPO} @ ${DEPS_CURVE25519_DONNA_GIT_TAG}")
 
 FetchContent_Declare(
     curve25519_donna
-    GIT_REPOSITORY https://github.com/agl/curve25519-donna.git
-    GIT_TAG        master
+    GIT_REPOSITORY ${DEPS_CURVE25519_DONNA_GIT_REPO}
+    GIT_TAG        ${DEPS_CURVE25519_DONNA_GIT_TAG}
     GIT_SHALLOW    TRUE
 )
 

@@ -47,17 +47,29 @@ if (DEFINED DISABLE_CENC_1000000_TESTS)
     set(CMAKE_C_FLAGS "-DDISABLE_CENC_1000000_TESTS ${CMAKE_C_FLAGS}")
 endif ()
 
-find_package(OpenSSL REQUIRED)
+if(BUILD_UTIL_OPENSSL)
+    # Skip find_package if OpenSSL paths are already provided (cross-compile scenario)
+    if(NOT OPENSSL_INCLUDE_DIR)
+        find_package(OpenSSL REQUIRED)
+    else()
+        message(STATUS "Using provided OpenSSL paths: ${OPENSSL_INCLUDE_DIR}")
+    endif()
+endif()
 
-add_library(saclient SHARED
+# Core sources (always included)
+set(SACLIENT_CORE_SOURCES
         include/sa.h
         include/sa_cenc.h
         include/sa_crypto.h
-        include/sa_engine.h
         include/sa_key.h
-        include/sa_provider.h
         include/sa_ta_types.h
         include/sa_types.h
+        )
+
+# OpenSSL-dependent sources (only when BUILD_UTIL_OPENSSL is ON)
+set(SACLIENT_OPENSSL_SOURCES
+        include/sa_engine.h
+        include/sa_provider.h
         src/sa_engine.c
         src/sa_engine_cipher.c
         src/sa_engine_digest.c
@@ -79,6 +91,12 @@ add_library(saclient SHARED
         src/sa_public_key.c
         )
 
+if(BUILD_UTIL_OPENSSL)
+    add_library(saclient SHARED ${SACLIENT_CORE_SOURCES} ${SACLIENT_OPENSSL_SOURCES})
+else()
+    add_library(saclient SHARED ${SACLIENT_CORE_SOURCES})
+endif()
+
 target_compile_options(saclient PRIVATE -Werror -Wall -Wextra -Wno-type-limits -Wno-unused-parameter
         -Wno-deprecated-declarations)
 
@@ -92,10 +110,18 @@ target_include_directories(saclient
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         PRIVATE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../util_openssl/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../util/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../util_mbedtls/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+        ${MBEDTLS_INCLUDE_DIR}
+        )
+
+if(BUILD_UTIL_OPENSSL)
+    target_include_directories(saclient PRIVATE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../util_openssl/include>
         ${OPENSSL_INCLUDE_DIR}
         )
+endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
     # using Clang
@@ -104,23 +130,44 @@ if (CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../include>
             )
 
-    target_link_libraries(saclient
-            PRIVATE
-            -Wl,-all_load
-            saclientimpl
-            util_openssl
-            ${OPENSSL_CRYPTO_LIBRARY}
-            )
+    if(BUILD_UTIL_OPENSSL)
+        target_link_libraries(saclient
+                PRIVATE
+                -Wl,-all_load
+                saclientimpl
+                util_openssl
+                ${OPENSSL_CRYPTO_LIBRARY}
+                )
+    else()
+        target_link_libraries(saclient
+                PRIVATE
+                -Wl,-all_load
+                saclientimpl
+                util_mbedtls
+                ${MBEDTLS_LIBRARIES}
+                )
+    endif()
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     # using GCC
-    target_link_libraries(saclient
-            PRIVATE
-            -Wl,--whole-archive
-            saclientimpl
-            -Wl,--no-whole-archive
-            util_openssl
-            ${OPENSSL_CRYPTO_LIBRARY}
-            )
+    if(BUILD_UTIL_OPENSSL)
+        target_link_libraries(saclient
+                PRIVATE
+                -Wl,--whole-archive
+                saclientimpl
+                -Wl,--no-whole-archive
+                util_openssl
+                ${OPENSSL_CRYPTO_LIBRARY}
+                )
+    else()
+        target_link_libraries(saclient
+                PRIVATE
+                -Wl,--whole-archive
+                saclientimpl
+                -Wl,--no-whole-archive
+                util_mbedtls
+                ${MBEDTLS_LIBRARIES}
+                )
+    endif()
 endif ()
 
 target_clangformat_setup(saclient)
@@ -286,12 +333,18 @@ if (BUILD_TESTS)
     target_include_directories(saclienttest
             PRIVATE
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../util_openssl/include>
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../util_mbedtls/include>
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-            ${OPENSSL_INCLUDE_DIR}
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../util/include>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../util_mbedtls/include>
             ${MBEDTLS_INCLUDE_DIR}
             )
+
+    if(BUILD_UTIL_OPENSSL)
+        target_include_directories(saclienttest PRIVATE
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../util_openssl/include>
+            ${OPENSSL_INCLUDE_DIR}
+            )
+    endif()
 
     if (CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
         # using Clang
@@ -303,12 +356,22 @@ if (BUILD_TESTS)
 
     target_link_libraries(saclienttest
         PRIVATE
+        gtest
+        gmock
         gmock_main
         saclient
-        util_openssl
         util_mbedtls
-        ${OPENSSL_CRYPTO_LIBRARY}
+        ${MBEDTLS_LIBRARIES}
+        stdc++
         )
+
+    if(BUILD_UTIL_OPENSSL)
+        target_link_libraries(saclienttest
+            PRIVATE
+            util_openssl
+            ${OPENSSL_CRYPTO_LIBRARY}
+            )
+    endif()
 
     if (COVERAGE AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         target_link_libraries(saclienttest

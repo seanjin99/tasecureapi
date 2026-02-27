@@ -21,7 +21,7 @@
 #include "digest_util_mbedtls.h"
 #include "log.h"
 #include "pkcs12_mbedtls.h"
-#include "pkcs8.h"
+#include "pkcs8_mbedtls.h"
 #include "porting/memory.h"
 #include "stored_key_internal.h"
 #include <memory.h>

@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "test_helpers.h"
+#include "test_helpers_mbedtls.h"
 #include "digest_util.h"
 #include "digest_util_mbedtls.h"
 #include "mbedtls/ctr_drbg.h"
@@ -36,11 +36,27 @@ std::vector<uint8_t> random(size_t size) {
     mbedtls_ctr_drbg_init(&ctr_drbg);
     
     const char* personalization = "test_helpers";
-    mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
+    if (mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
                           (const unsigned char*)personalization,
-                          strlen(personalization));
+                          strlen(personalization)) != 0) {
+        mbedtls_ctr_drbg_free(&ctr_drbg);
+        mbedtls_entropy_free(&entropy);
+        return result;
+    }
     
-    mbedtls_ctr_drbg_random(&ctr_drbg, result.data(), size);
+    // mbedtls_ctr_drbg_random has a max request size of MBEDTLS_CTR_DRBG_MAX_REQUEST (1024).
+    // Generate in chunks to handle larger sizes.
+    size_t offset = 0;
+    while (offset < size) {
+        size_t chunk = size - offset;
+        if (chunk > MBEDTLS_CTR_DRBG_MAX_REQUEST)
+            chunk = MBEDTLS_CTR_DRBG_MAX_REQUEST;
+        
+        if (mbedtls_ctr_drbg_random(&ctr_drbg, result.data() + offset, chunk) != 0) {
+            break;
+        }
+        offset += chunk;
+    }
     
     mbedtls_ctr_drbg_free(&ctr_drbg);
     mbedtls_entropy_free(&entropy);

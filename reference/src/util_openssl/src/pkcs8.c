@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "pkcs8.h"
+#include "pkcs8_openssl.h"
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>

@@ -26,7 +26,7 @@
 #if OPENSSL_VERSION_NUMBER >= 0x30000000
 #include "common.h"
 #include "log.h"
-#include "pkcs8.h"
+#include "pkcs8_openssl.h"
 #include "sa_public_key.h"
 #include "sa_rights.h"
 #include <memory.h>

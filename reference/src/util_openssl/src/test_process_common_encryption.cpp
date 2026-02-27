@@ -19,7 +19,7 @@
 #include "test_process_common_encryption.h" // NOLINT
 #include "common.h"
 #include "log.h"
-#include "test_helpers.h"
+#include "test_helpers_openssl.h"
 #include <cstring>
 #include <openssl/evp.h>
 
