@@ -27,6 +27,9 @@
 
 #include "client_store.h"
 #include "sa_types.h"
+#ifdef ENABLE_SVP
+#include "svp_store.h"
+#endif //ENABLE_SVP
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,6 +47,9 @@ extern "C" {
  */
 sa_status convert_buffer(
         uint8_t** bytes,
+#ifdef ENABLE_SVP
+        svp_t** svp,
+#endif //ENABLE_SVP
         const sa_buffer* buffer,
         size_t bytes_to_process,
         const client_t* client,

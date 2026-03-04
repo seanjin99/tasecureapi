@@ -24,6 +24,9 @@
 
 sa_status convert_buffer(
         uint8_t** bytes,
+#ifdef ENABLE_SVP
+        svp_t** svp,
+#endif //ENABLE_SVP
         const sa_buffer* buffer,
         size_t bytes_to_process,
         const client_t* client,
@@ -33,6 +36,13 @@ sa_status convert_buffer(
         ERROR("NULL bytes");
         return SA_STATUS_NULL_PARAMETER;
     }
+
+#ifdef ENABLE_SVP
+    if (svp == NULL) {
+        ERROR("NULL svp");
+        return SA_STATUS_NULL_PARAMETER;
+    }
+#endif //ENABLE_SVP
 
     if (buffer == NULL) {
         ERROR("NULL buffer");
@@ -77,6 +87,43 @@ sa_status convert_buffer(
             return SA_STATUS_INVALID_PARAMETER;
         }
     }
+#ifdef ENABLE_SVP
+    else if (buffer->buffer_type == SA_BUFFER_TYPE_SVP) {
+        svp_store_t* svp_store = client_get_svp_store(client);
+        sa_status status = svp_store_acquire_exclusive(svp, svp_store, buffer->context.svp.buffer, caller_uuid);
+        if (status != SA_STATUS_OK) {
+            ERROR("svp_store_acquire_exclusive failed");
+            return status;
+        }
+
+        size_t memory_range;
+        if (add_overflow(buffer->context.svp.offset, bytes_to_process, &memory_range)) {
+            ERROR("Integer overflow");
+            return SA_STATUS_INVALID_PARAMETER;
+        }
+
+        svp_buffer_t* svp_buffer = svp_get_buffer(*svp);
+
+        // This call validates that SVP buffer is contained entirely within SVP memory.
+        void* memory_location = svp_get_svp_memory(svp_buffer);
+        if (memory_location == NULL) {
+            ERROR("memory range is not within SVP memory");
+            return SA_STATUS_INVALID_PARAMETER;
+        }
+
+        size_t memory_size = svp_get_size(svp_buffer);
+        if (memory_range > memory_size) {
+            ERROR("buffer not large enough");
+            return SA_STATUS_INVALID_PARAMETER;
+        }
+
+        if (add_overflow((unsigned long) memory_location, buffer->context.svp.offset, (unsigned long*) bytes)) {
+            ERROR("Integer overflow");
+            return SA_STATUS_INVALID_PARAMETER;
+        }
+
+    }
+#endif // ENABLE_SVP
 
     return SA_STATUS_OK;
 }

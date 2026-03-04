@@ -159,6 +159,10 @@ sa_status cenc_process_sample(
 
     sa_status status;
     cipher_t* cipher = NULL;
+#ifdef ENABLE_SVP
+    svp_t* out_svp = NULL;
+    svp_t* in_svp = NULL;
+#endif //ENABLE_SVP
     do {
         status = cipher_store_acquire_exclusive(&cipher, cipher_store, sample->context, caller_uuid);
         if (status != SA_STATUS_OK) {
@@ -175,14 +179,22 @@ sa_status cenc_process_sample(
         }
 
         uint8_t* out_bytes = NULL;
-        status = convert_buffer(&out_bytes, sample->out, required_length, client, caller_uuid);
+        status = convert_buffer(&out_bytes,
+#ifdef ENABLE_SVP
+                &out_svp,
+#endif // ENABLE_SVP
+                sample->out, required_length, client, caller_uuid);
         if (status != SA_STATUS_OK) {
             ERROR("convert_buffer failed");
             break;
         }
 
         uint8_t* in_bytes = NULL;
-        status = convert_buffer(&in_bytes, sample->in, required_length, client, caller_uuid);
+        status = convert_buffer(&in_bytes,
+#ifdef ENABLE_SVP
+                &in_svp,
+#endif // ENABLE_SVP
+                sample->in, required_length, client, caller_uuid);
         if (status != SA_STATUS_OK) {
             ERROR("convert_buffer failed");
             break;
@@ -198,7 +210,7 @@ sa_status cenc_process_sample(
 
         uint8_t iv[AES_BLOCK_SIZE];
         memcpy(iv, sample->iv, sample->iv_length);
-        
+
         // For CTR mode with multiple samples, we need to fully reinitialize the cipher context
         // to clear any residual state from previous operations (including previous test runs).
         // This is critical because mbedTLS cipher contexts can have internal state that persists
@@ -209,7 +221,7 @@ sa_status cenc_process_sample(
             status = SA_STATUS_NULL_PARAMETER;
             break;
         }
-        
+
         // Use reinit_for_sample which properly resets CTR mode contexts (free+init+setup+setkey+set_iv)
         // For other modes, it just calls symmetric_context_set_iv
         status = symmetric_context_reinit_for_sample(symmetric_context, stored_key, iv, AES_BLOCK_SIZE);
@@ -313,14 +325,32 @@ sa_status cenc_process_sample(
 
         if (status == SA_STATUS_OK) {
             if (sample->in->buffer_type == SA_BUFFER_TYPE_CLEAR) {
-                sample->in->context.clear.offset += offset;
-            }
+		sample->in->context.clear.offset += offset;
+	    }
+#ifdef ENABLE_SVP
+	    else if( sample->in->buffer_type == SA_BUFFER_TYPE_SVP) {
+		sample->in->context.svp.offset += offset;
+	    }
+#endif // ENABLE_SVP
 
             if (sample->out->buffer_type == SA_BUFFER_TYPE_CLEAR) {
                 sample->out->context.clear.offset += offset;
-	        }
+	    }
+#ifdef ENABLE_SVP
+	    else if (sample->out->buffer_type == SA_BUFFER_TYPE_SVP) {
+                sample->out->context.svp.offset += offset;
+	    }
+#endif // ENABLE_SVP
         }
     } while (false);
+#ifdef ENABLE_SVP
+    if (in_svp != NULL)
+        svp_store_release_exclusive(client_get_svp_store(client), sample->in->context.svp.buffer, in_svp, caller_uuid);
+
+    if (out_svp != NULL)
+        svp_store_release_exclusive(client_get_svp_store(client), sample->out->context.svp.buffer, out_svp,
+                caller_uuid);
+#endif // ENABLE_SVP
     if (cipher != NULL)
         cipher_store_release_exclusive(cipher_store, sample->context, cipher, caller_uuid);
 

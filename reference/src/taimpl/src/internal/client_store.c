@@ -26,6 +26,9 @@
 #define NUM_KEY_SLOTS 256
 #define NUM_CIPHER_SLOTS 256
 #define NUM_MAC_SLOTS 256
+#ifdef ENABLE_SVP
+#define NUM_SVP_SLOTS 256
+#endif // ENABLE_SVP
 
 static once_flag flag = ONCE_FLAG_INIT;
 static mtx_t mutex;
@@ -35,6 +38,9 @@ struct client_s {
     key_store_t* key_store;
     cipher_store_t* cipher_store;
     mac_store_t* mac_store;
+#ifdef ENABLE_SVP
+    svp_store_t* svp_store;
+#endif // ENABLE_SVP
 };
 
 key_store_t* client_get_key_store(const client_t* client) {
@@ -64,6 +70,17 @@ mac_store_t* client_get_mac_store(const client_t* client) {
     return client->mac_store;
 }
 
+#ifdef ENABLE_SVP
+svp_store_t* client_get_svp_store(const client_t* client) {
+    if (client == NULL) {
+        ERROR("NULL client");
+        return NULL;
+    }
+
+    return client->svp_store;
+}
+#endif // ENABLE_SVP
+
 static void client_free(void* object) {
     if (object == NULL) {
         return;
@@ -74,14 +91,26 @@ static void client_free(void* object) {
     key_store_shutdown(client->key_store);
     cipher_store_shutdown(client->cipher_store);
     mac_store_shutdown(client->mac_store);
+#ifdef ENABLE_SVP
+    svp_store_shutdown(client->svp_store);
+#endif // ENABLE_SVP
     memory_internal_free(client);
 }
 
+#ifdef ENABLE_SVP
+static client_t* client_init(
+        const sa_uuid* uuid,
+        size_t key_store_size,
+        size_t cipher_store_size,
+        size_t mac_store_size,
+        size_t svp_store_size) {
+#else
 static client_t* client_init(
         const sa_uuid* uuid,
         size_t key_store_size,
         size_t cipher_store_size,
         size_t mac_store_size) {
+#endif // ENABLE_SVP
 
     if (uuid == NULL) {
         ERROR("NULL uuid");
@@ -115,6 +144,13 @@ static client_t* client_init(
             ERROR("mac_store_init failed");
             break;
         }
+#ifdef ENABLE_SVP
+        client->svp_store = svp_store_init(svp_store_size);
+        if (client->svp_store == NULL) {
+            ERROR("svp_store_init failed");
+            break;
+        }
+#endif // ENABLE_SVP
         status = true;
     } while (false);
 
@@ -219,7 +255,11 @@ sa_status client_store_add(
     sa_status status = SA_STATUS_INTERNAL_ERROR;
     client_t* client = NULL;
     do {
+#ifdef ENABLE_SVP
+        client = client_init(caller_uuid, NUM_KEY_SLOTS, NUM_CIPHER_SLOTS, NUM_MAC_SLOTS, NUM_SVP_SLOTS);
+#else
         client = client_init(caller_uuid, NUM_KEY_SLOTS, NUM_CIPHER_SLOTS, NUM_MAC_SLOTS);
+#endif // ENABLE_SVP
         if (client == NULL) {
             ERROR("client_init failed");
             break;

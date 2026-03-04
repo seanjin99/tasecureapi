@@ -133,7 +133,11 @@ static sa_status verify_sample(
         }
 
         uint8_t* out_bytes = NULL;
-        status = convert_buffer(&out_bytes, sample->out, required_length, client, caller_uuid);
+        status = convert_buffer(&out_bytes,
+#ifdef ENABLE_SVP
+                &out_svp,
+#endif // ENABLE_SVP
+                sample->out, required_length, client, caller_uuid);
         if (status != SA_STATUS_OK) {
             ERROR("convert_buffer failed");
             break;
@@ -141,7 +145,11 @@ static sa_status verify_sample(
 
         // Check in buffer length.
         uint8_t* in_bytes = NULL;
-        status = convert_buffer(&in_bytes, sample->in, required_length, client, caller_uuid);
+        status = convert_buffer(&in_bytes,
+#ifdef ENABLE_SVP
+                &in_svp,
+#endif // ENABLE_SVP
+                sample->in, required_length, client, caller_uuid);
         if (status != SA_STATUS_OK) {
             ERROR("convert_buffer failed");
             break;

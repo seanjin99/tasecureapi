@@ -78,7 +78,22 @@ set(SACLIENTIMPL_SOURCES
         src/sa_key_release.c
         src/sa_key_unwrap.c
         src/sa_process_common_encryption.c
+        src/sa_svp_supported.c
 	)
+if(ENABLE_SVP)
+    list(APPEND SACLIENTIMPL_SOURCES
+        src/porting/sa_svp_memory_alloc.c
+        src/porting/sa_svp_memory_free.c
+        src/sa_svp_buffer_check.c
+        src/sa_svp_buffer_alloc.c
+        src/sa_svp_buffer_copy.c
+        src/sa_svp_buffer_free.c
+        src/sa_svp_buffer_release.c
+        src/sa_svp_buffer_write.c
+        src/sa_svp_key_check.c
+        src/sa_svp_buffer_create.c
+        )
+endif()
 
 add_library(saclientimpl STATIC ${SACLIENTIMPL_SOURCES})
 

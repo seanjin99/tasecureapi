@@ -32,6 +32,9 @@
 #include "mac_store.h"
 #include "object_store.h"
 #include "sa_types.h"
+#ifdef ENABLE_SVP
+#include "svp_store.h"
+#endif // ENABLE_SVP
 #include "ta_sa_types.h"
 
 #ifdef __cplusplus
@@ -64,6 +67,15 @@ cipher_store_t* client_get_cipher_store(const client_t* client);
  */
 mac_store_t* client_get_mac_store(const client_t* client);
 
+#ifdef ENABLE_SVP
+/**
+ * Get the svp store.
+ *
+ * @param[in] client client.
+ * @return svp store.
+ */
+svp_store_t* client_get_svp_store(const client_t* client);
+#endif //ENABLE_SVP
 
 typedef object_store_t client_store_t;
 

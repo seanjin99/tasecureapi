@@ -30,6 +30,7 @@
 #include "ta_sa_cenc.h"
 #include "ta_sa_crypto.h"
 #include "ta_sa_key.h"
+#include "ta_sa_svp.h"
 #include "ta_sa_types.h"
 
 #ifdef __cplusplus

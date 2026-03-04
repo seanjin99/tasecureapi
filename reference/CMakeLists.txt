@@ -21,6 +21,13 @@ project(tasecureapi)
 
 option(BUILD_TESTS  "Builds and installs the unit tests" ON)
 option(BUILD_DOC    "Build documentation" ON)
+option(ENABLE_SVP  "Build SecAPI with SVP" OFF)
+
+if(ENABLE_SVP)
+    message(STATUS "ENABLE_SVP is ON: Building SecAPI with SVP functionality")
+else()
+    message(STATUS "ENABLE_SVP is OFF: Building SecAPI without SVP functionality")
+endif()
 
 if(${BUILD_TESTS})
     enable_testing()

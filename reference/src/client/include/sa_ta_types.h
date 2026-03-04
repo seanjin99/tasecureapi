@@ -69,6 +69,15 @@ typedef enum {
     SA_CRYPTO_MAC_COMPUTE,
     SA_CRYPTO_MAC_RELEASE,
     SA_CRYPTO_SIGN,
+    SA_SVP_SUPPORTED,
+    SA_SVP_BUFFER_ALLOC,
+    SA_SVP_BUFFER_CREATE,
+    SA_SVP_BUFFER_FREE,
+    SA_SVP_BUFFER_RELEASE,
+    SA_SVP_BUFFER_WRITE,
+    SA_SVP_BUFFER_COPY,
+    SA_SVP_KEY_CHECK,
+    SA_SVP_BUFFER_CHECK,
     SA_PROCESS_COMMON_ENCRYPTION,
     SA_KEY_PROVISION_TA
 } SA_COMMAND_ID;
@@ -454,6 +463,79 @@ typedef struct {
     uint32_t mgf1_digest_algorithm; // RSA PSS
     uint8_t precomputed_digest;
 } sa_crypto_sign_s;
+
+// sa_svp_supported
+// param[0] IN - sa_svp_supported_s
+typedef struct {
+    uint8_t api_version;
+} sa_svp_supported_s;
+
+#ifdef ENABLE_SVP
+// sa_svp_buffer_create
+// param[0] INOUT - sa_svp_buffer
+typedef struct {
+    uint8_t api_version;
+    sa_svp_buffer svp_buffer;
+    uint64_t svp_memory;
+    uint64_t size;
+} sa_svp_buffer_create_s;
+
+// sa_svp_buffer_release
+// param[0] INOUT - sa_svp_buffer_release_s
+typedef struct {
+    uint8_t api_version;
+    uint64_t svp_memory;
+    uint64_t size;
+    sa_svp_buffer svp_buffer;
+} sa_svp_buffer_release_s;
+
+// sa_svp_buffer_write
+// param[0] INOUT - sa_svp_buffer_write_s
+// param[1] IN - in + in_length
+// param[2] IN - sa_svp_offset_s
+typedef struct {
+    uint8_t api_version;
+    sa_svp_buffer out;
+} sa_svp_buffer_write_s;
+
+typedef struct {
+    uint64_t out_offset;
+    uint64_t in_offset;
+    uint64_t length;
+} sa_svp_offset_s;
+
+// sa_svp_buffer_copy
+// param[0] INOUT - sa_svp_buffer_copy_s
+// param[1] IN - sa_svp_offset_s
+typedef struct {
+    uint8_t api_version;
+    sa_svp_buffer out;
+    sa_svp_buffer in;
+} sa_svp_buffer_copy_s;
+
+// sa_svp_key_check
+// param[0] INOUT - sa_svp_key_check_s
+// param[1] IN - in
+// param[2] IN - expected+length
+typedef struct {
+    uint8_t api_version;
+    sa_key key;
+    uint32_t in_buffer_type;
+    uint64_t in_offset;
+    uint64_t bytes_to_process;
+} sa_svp_key_check_s;
+
+// sa_svp_buffer_check
+// param[0] IN - sa_svp_buffer_check_s
+// param[1] IN - hash+length
+typedef struct {
+    uint8_t api_version;
+    sa_svp_buffer svp_buffer;
+    uint64_t offset;
+    uint64_t length;
+    uint32_t digest_algorithm;
+} sa_svp_buffer_check_s;
+#endif // ENABLE_SVP
 
 // sa_process_common_encryption (1 sample per call)
 // param[0] INOUT - sa_process_common_encryption_s

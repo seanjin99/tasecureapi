@@ -66,7 +66,7 @@ and src/porting directories.
 
 include/internal and src/internal directories contain the OpenSSL implementation of SecApi 3.
 Vendors may modify code in the include/internal and src/internal directories if needed to replace
-the OpenSSL cryptographic implementation with a SoC specific cryptographic implementation. 
+the OpenSSL cryptographic implementation with a SoC specific cryptographic implementation.
 
 ### 'util'
 
@@ -101,6 +101,31 @@ SoC and root key tests are also disabled by default. To enable these tests, add 
 key defined in sa_key_common.cpp must match the root key defined on the test device for these tests to pass.
 
 -DDISABLE_CENC_1000000_TESTS=true can be added to disable 1KB sample common encryption tests.
+
+### SVP (Secure Video Pipeline) Support
+
+SVP support is controlled by the `ENABLE_SVP` cmake option. By default, SVP is **OFF**.
+
+To build with SVP enabled:
+
+```
+cmake -S . -B cmake-build -DENABLE_SVP=ON
+```
+
+When `ENABLE_SVP=ON`:
+- SVP buffer management APIs (`sa_svp_buffer_*`) are fully functional.
+- SVP key check (`sa_svp_key_check`) validates keys against SVP buffers.
+- Cipher process and common encryption operations support SVP buffer types.
+- SVP-related test cases are enabled in both `saclienttest` and `taimpltest`.
+
+When `ENABLE_SVP=OFF` (default):
+- SVP APIs return `SA_STATUS_OPERATION_NOT_SUPPORTED`.
+- SVP-specific code is excluded from the build via `#ifdef ENABLE_SVP` guards.
+
+**Note on OpenSSL dependency:** `BUILD_UTIL_OPENSSL` is **ON** by default. If you build with
+`-DBUILD_UTIL_OPENSSL=OFF -DENABLE_SVP=ON`, `taimpltest` will still build — you just won't get
+the `ta_sa_svp_crypto` tests. The other SVP tests in `taimpltest` (buffer check/copy/write, key
+check) don't need OpenSSL.
 
 ```
 cmake -S . -B cmake-build
@@ -216,7 +241,7 @@ The secure heap shall be used for storing unencrypted key material while in use.
 
 ## Coding Standards
 
-clang-format is used to format all code according to the settings in the associated 
+clang-format is used to format all code according to the settings in the associated
 .clang-format file. All attempts were used to use descriptive variable names and predefined
 constants instead of magic numbers. When the OpenSSL library is used, standard OpenSSL usage
 convention is followed by testing return values against the value 1 which represents success.

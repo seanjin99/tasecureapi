@@ -47,6 +47,13 @@ protected:
             std::vector<sa_sample>& samples);
 
 
+#ifdef ENABLE_SVP
+    virtual sa_status svp_buffer_write(
+            sa_svp_buffer out,
+            const void* in,
+            size_t in_length) = 0;
+
+#endif
     ~ProcessCommonEncryptionBase() = default;
 
 private:

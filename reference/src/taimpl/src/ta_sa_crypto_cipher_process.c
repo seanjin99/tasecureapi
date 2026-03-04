@@ -403,6 +403,10 @@ sa_status ta_sa_crypto_cipher_process(
     client_t* client = NULL;
     cipher_store_t* cipher_store = NULL;
     cipher_t* cipher = NULL;
+#ifdef ENABLE_SVP
+    svp_t* out_svp = NULL;
+    svp_t* in_svp = NULL;
+#endif //ENABLE_SVP
     do {
         status = client_store_acquire(&client, client_store, client_slot, caller_uuid);
         if (status != SA_STATUS_OK) {
@@ -469,14 +473,22 @@ sa_status ta_sa_crypto_cipher_process(
         }
 
         uint8_t* out_bytes = NULL;
-        status = convert_buffer(&out_bytes, out, required_length, client, caller_uuid);
+        status = convert_buffer(&out_bytes,
+#ifdef ENABLE_SVP
+                &out_svp,
+#endif // ENABLE_SVP
+                out, required_length, client, caller_uuid);
         if (status != SA_STATUS_OK) {
             ERROR("convert_buffer failed");
             break;
         }
 
         uint8_t* in_bytes = NULL;
-        status = convert_buffer(&in_bytes, in, *bytes_to_process, client, caller_uuid);
+        status = convert_buffer(&in_bytes,
+#ifdef ENABLE_SVP
+                &in_svp,
+#endif // ENABLE_SVP
+                in, *bytes_to_process, client, caller_uuid);
         if (status != SA_STATUS_OK) {
             ERROR("convert_buffer failed");
             break;
@@ -525,14 +537,32 @@ sa_status ta_sa_crypto_cipher_process(
         if (out != NULL) {
             if (in->buffer_type == SA_BUFFER_TYPE_CLEAR) {
                 in->context.clear.offset += in_length;
-	        }
+	    }
+#ifdef ENABLE_SVP
+	    else if ( in->buffer_type == SA_BUFFER_TYPE_SVP) {
+                in->context.svp.offset += in_length;
+	    }
+#endif
 
         if (out->buffer_type == SA_BUFFER_TYPE_CLEAR) {
                 out->context.clear.offset += *bytes_to_process;
 	    }
+#ifdef ENABLE_SVP
+	    else if ( out->buffer_type == SA_BUFFER_TYPE_SVP) {
+                //in->context.svp.offset += in_length;
+                out->context.svp.offset += *bytes_to_process;
+	    }
+#endif
         }
     } while (false);
 
+#ifdef ENABLE_SVP
+    if (in_svp != NULL)
+        svp_store_release_exclusive(client_get_svp_store(client), in->context.svp.buffer, in_svp, caller_uuid);
+
+    if (out_svp != NULL)
+        svp_store_release_exclusive(client_get_svp_store(client), out->context.svp.buffer, out_svp, caller_uuid);
+#endif
     if (cipher != NULL)
         cipher_store_release_exclusive(cipher_store, context, cipher, caller_uuid);
 

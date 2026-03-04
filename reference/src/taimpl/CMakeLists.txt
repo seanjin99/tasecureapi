@@ -58,6 +58,7 @@ set(TAIMPL_SOURCES
         include/porting/otp_internal.h
         include/porting/overflow.h
         include/porting/rand.h
+        include/porting/svp.h
         include/porting/transport.h
         include/porting/video_output.h
         src/porting/init.c
@@ -65,6 +66,7 @@ set(TAIMPL_SOURCES
         src/porting/otp.c
         src/porting/overflow.c
         src/porting/rand.c
+        src/porting/svp.c
         src/porting/transport.c
         src/porting/video_output.c
 
@@ -94,9 +96,11 @@ set(TAIMPL_SOURCES
         include/internal/soc_key_container.h
         include/internal/stored_key.h
         include/internal/stored_key_internal.h
+        include/internal/svp_store.h
         include/internal/symmetric.h
         include/internal/typej.h
         include/internal/unwrap.h
+        src/internal/svp_store.c
         src/internal/buffer.c
         src/internal/cenc.c
         src/internal/cipher_store.c
@@ -129,6 +133,7 @@ set(TAIMPL_SOURCES
         include/ta_sa_cenc.h
         include/ta_sa_crypto.h
         include/ta_sa_key.h
+        include/ta_sa_svp.h
         include/ta_sa_types.h
         src/ta_sa_close.c
         src/ta_sa_crypto_cipher_init.c
@@ -160,7 +165,18 @@ set(TAIMPL_SOURCES
         src/ta_sa_key_release.c
         src/ta_sa_key_unwrap.c
         src/ta_sa_process_common_encryption.c
+        src/ta_sa_svp_supported.c
         )
+if(ENABLE_SVP)
+    list(APPEND TAIMPL_SOURCES
+        src/ta_sa_svp_buffer_check.c
+        src/ta_sa_svp_buffer_copy.c
+        src/ta_sa_svp_buffer_create.c
+        src/ta_sa_svp_buffer_release.c
+        src/ta_sa_svp_buffer_write.c
+        src/ta_sa_svp_key_check.c
+        )
+endif()
 
 
 add_library(taimpl STATIC ${TAIMPL_SOURCES})
@@ -271,6 +287,21 @@ if (BUILD_TESTS)
             test/slots.cpp
             test/ta_sa_init.cpp
         )
+    if(BUILD_UTIL_OPENSSL)
+        list(APPEND TAIMPLTEST_SOURCES
+            test/ta_sa_svp_crypto.cpp
+            test/ta_sa_svp_crypto.h
+            )
+    endif()
+    if(NOT ENABLE_SVP)
+        list(APPEND TAIMPLTEST_SOURCES
+            test/ta_sa_svp_key_check.cpp
+            test/ta_sa_svp_buffer_check.cpp
+            test/ta_sa_svp_buffer_copy.cpp
+            test/ta_sa_svp_buffer_write.cpp
+            test/ta_sa_svp_common.cpp
+            )
+    endif()
     add_executable(taimpltest ${TAIMPLTEST_SOURCES})
 
     target_include_directories(taimpltest
@@ -281,6 +312,14 @@ if (BUILD_TESTS)
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/internal>
             ${MBEDTLS_INCLUDE_DIR}
             )
+
+    if(BUILD_UTIL_OPENSSL)
+        target_include_directories(taimpltest
+                PRIVATE
+                $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../util_openssl/include>
+                ${OPENSSL_INCLUDE_DIR}
+                )
+    endif()
 
     target_compile_options(taimpltest PRIVATE -Werror -Wall -Wextra -Wno-unused-parameter)
 
@@ -296,6 +335,14 @@ if (BUILD_TESTS)
             ${MBEDTLS_LIBRARIES}
             stdc++
             )
+
+    if(BUILD_UTIL_OPENSSL)
+        target_link_libraries(taimpltest
+                PRIVATE
+                util_openssl
+                ${OPENSSL_LIBRARIES}
+                )
+    endif()
 
     target_clangformat_setup(taimpltest)
 

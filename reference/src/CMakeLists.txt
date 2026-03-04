@@ -110,6 +110,10 @@ if (DEFINED DISABLE_CENC_TIMING)
     set(CMAKE_C_FLAGS "-DDISABLE_CENC_TIMING ${CMAKE_C_FLAGS}")
 endif ()
 
+if (ENABLE_SVP)
+    set(CMAKE_CXX_FLAGS "-DENABLE_SVP ${CMAKE_CXX_FLAGS}")
+    set(CMAKE_C_FLAGS "-DENABLE_SVP ${CMAKE_C_FLAGS}")
+endif ()
 
 add_subdirectory(util)
 add_subdirectory(util_mbedtls)

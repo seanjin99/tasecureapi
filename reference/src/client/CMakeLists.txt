@@ -34,7 +34,7 @@ endif ()
 
 if (DEFINED ENABLE_CLANG_TIDY_TESTS)
     if (CLANG_TIDY_COMMAND)
-        set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_COMMAND}; 
+        set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_COMMAND};
             -checks=-clang-analyzer-cplusplus.NewDeleteLeaks,-hicpp-use-auto,-modernize-use-auto,-google-runtime-int,-google-readability-casting)
         message("clang-tidy found--enabling for tests")
     endif ()
@@ -62,6 +62,7 @@ set(SACLIENT_CORE_SOURCES
         include/sa_cenc.h
         include/sa_crypto.h
         include/sa_key.h
+        include/sa_svp.h
         include/sa_ta_types.h
         include/sa_types.h
         )
@@ -324,7 +325,22 @@ if (BUILD_TESTS)
             test/sa_provider_pkcs7.cpp
             test/sa_provider_signature.cpp
             )
-   
+    # Conditionally add files if ENABLE_SVP is defined
+    if(ENABLE_SVP)
+        list(APPEND SACLIENT_TEST_SOURCES
+            test/sa_client_thread_test.cpp
+            test/sa_svp_buffer_alloc.cpp
+            test/sa_svp_buffer_check.cpp
+            test/sa_svp_buffer_copy.cpp
+            test/sa_svp_buffer_create.cpp
+            test/sa_svp_buffer_release.cpp
+            test/sa_svp_buffer_write.cpp
+            test/sa_svp_key_check.cpp
+            test/sa_svp_common.cpp
+            test/sa_svp_common.h
+            )
+    endif()
+
     add_executable(saclienttest ${SACLIENT_TEST_SOURCES})
 
     target_compile_options(saclienttest PRIVATE -Werror -Wall -Wextra -Wno-type-limits -Wno-unused-parameter
