@@ -27,11 +27,11 @@ using namespace client_test_helpers;
 
 
 void SaProcessCommonEncryptionTest::SetUp() {
-    // SVP not supported - skip all SVP tests
     auto buffer_types = std::get<5>(GetParam());
     sa_buffer_type const out_buffer_type = std::get<0>(buffer_types);
     sa_buffer_type const in_buffer_type = std::get<1>(buffer_types);
-    if (in_buffer_type == SA_BUFFER_TYPE_SVP || out_buffer_type == SA_BUFFER_TYPE_SVP)
+    if ((in_buffer_type == SA_BUFFER_TYPE_SVP || out_buffer_type == SA_BUFFER_TYPE_SVP) &&
+            sa_svp_supported() == SA_STATUS_OPERATION_NOT_SUPPORTED)
         GTEST_SKIP() << "SVP not supported. Skipping all SVP tests";
 }
 
@@ -918,8 +918,8 @@ TEST_F(SaProcessCommonEncryptionNegativeTest, failClearBufferOverlap) {
 }
 
 TEST_F(SaProcessCommonEncryptionNegativeTest, failSvpBufferOverlap) {
-    // SVP not supported - skip this test
-    GTEST_SKIP() << "SVP not supported. Skipping all SVP tests";
+    if (sa_svp_supported() == SA_STATUS_OPERATION_NOT_SUPPORTED)
+        GTEST_SKIP() << "SVP not supported. Skipping all SVP tests";
 
     cipher_parameters parameters;
     parameters.cipher_algorithm = SA_CIPHER_ALGORITHM_AES_CBC;

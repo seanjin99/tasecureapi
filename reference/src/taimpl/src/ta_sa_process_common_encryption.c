@@ -65,6 +65,10 @@ static sa_status verify_sample(
 
     sa_status status;
     cipher_t* cipher = NULL;
+#ifdef ENABLE_SVP
+    svp_t* out_svp = NULL;
+    svp_t* in_svp = NULL;
+#endif // ENABLE_SVP
     do {
         status = cipher_store_acquire_exclusive(&cipher, cipher_store, sample->context, caller_uuid);
         if (status != SA_STATUS_OK) {
@@ -167,6 +171,13 @@ static sa_status verify_sample(
             break;
         }
     } while (false);
+#ifdef ENABLE_SVP
+    if (in_svp != NULL)
+        svp_store_release_exclusive(client_get_svp_store(client), sample->in->context.svp.buffer, in_svp, caller_uuid);
+
+    if (out_svp != NULL)
+        svp_store_release_exclusive(client_get_svp_store(client), sample->out->context.svp.buffer, out_svp, caller_uuid);
+#endif // ENABLE_SVP
     if (cipher != NULL)
         cipher_store_release_exclusive(cipher_store, sample->context, cipher, caller_uuid);
 

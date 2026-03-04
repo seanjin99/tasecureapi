@@ -451,32 +451,32 @@ bool SaCipherCryptoBase::ec_is_valid_x_coordinate(
 }
 
 void SaCryptoCipherDecryptTest::SetUp() {
-    // SVP not supported - skip SVP tests
-    if (std::get<3>(GetParam()) == SA_BUFFER_TYPE_SVP)
+    if (std::get<3>(GetParam()) == SA_BUFFER_TYPE_SVP &&
+            sa_svp_supported() == SA_STATUS_OPERATION_NOT_SUPPORTED)
         GTEST_SKIP() << "SVP not supported. Skipping all SVP tests";
 }
 
 void SaCryptoCipherEncryptTest::SetUp() {
-    // SVP not supported - skip SVP tests
-    if (std::get<3>(GetParam()) == SA_BUFFER_TYPE_SVP)
+    if (std::get<3>(GetParam()) == SA_BUFFER_TYPE_SVP &&
+            sa_svp_supported() == SA_STATUS_OPERATION_NOT_SUPPORTED)
         GTEST_SKIP() << "SVP not supported. Skipping all SVP tests";
 }
 
 void SaCryptoCipherProcessLastTest::SetUp() {
-    // SVP not supported - skip SVP tests
-    if (std::get<3>(GetParam()) == SA_BUFFER_TYPE_SVP)
+    if (std::get<3>(GetParam()) == SA_BUFFER_TYPE_SVP &&
+            sa_svp_supported() == SA_STATUS_OPERATION_NOT_SUPPORTED)
         GTEST_SKIP() << "SVP not supported. Skipping all SVP tests";
 }
 
 void SaCryptoCipherWithSvpTest::SetUp() {
-    // SVP not supported - skip SVP tests
-    if (std::get<0>(GetParam()) == SA_BUFFER_TYPE_SVP)
+    if (std::get<0>(GetParam()) == SA_BUFFER_TYPE_SVP &&
+            sa_svp_supported() == SA_STATUS_OPERATION_NOT_SUPPORTED)
         GTEST_SKIP() << "SVP not supported. Skipping all SVP tests";
 }
 
 void SaCryptoCipherSvpOnlyTest::SetUp() {
-    // SVP not supported - always skip
-    GTEST_SKIP() << "SVP not supported. Skipping all SVP tests";
+    if (sa_svp_supported() == SA_STATUS_OPERATION_NOT_SUPPORTED)
+        GTEST_SKIP() << "SVP not supported. Skipping all SVP tests";
 }
 
 // clang-format off

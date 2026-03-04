@@ -129,6 +129,14 @@ sa_status sa_process_common_encryption(
                         ((uint8_t*) samples[i].out->context.clear.buffer) + samples[i].out->context.clear.offset,
                         param2_size);
             }
+#ifdef ENABLE_SVP
+            else if (samples[i].out->buffer_type == SA_BUFFER_TYPE_SVP) {
+                process_common_encryption->out_offset = samples[i].out->context.svp.offset;
+                param2_size = sizeof(sa_svp_buffer);
+                param2_type = TA_PARAM_IN;
+                CREATE_PARAM(param2, &samples[i].out->context.svp.buffer, param2_size);
+            }
+#endif
             else {
                 ERROR("Invalid out buffer_type");
                 status = SA_STATUS_INVALID_PARAMETER;
@@ -156,6 +164,13 @@ sa_status sa_process_common_encryption(
                         ((uint8_t*) samples[i].in->context.clear.buffer) + samples[i].in->context.clear.offset,
                         param3_size);
             }
+#ifdef ENABLE_SVP
+            else if (samples[i].in->buffer_type == SA_BUFFER_TYPE_SVP) {
+                process_common_encryption->in_offset = samples[i].in->context.svp.offset;
+                param3_size = sizeof(sa_svp_buffer);
+                CREATE_PARAM(param3, &samples[i].in->context.svp.buffer, param3_size);
+            }
+#endif
             else {
                 ERROR("Invalid in buffer_type");
                 status = SA_STATUS_INVALID_PARAMETER;
@@ -180,9 +195,19 @@ sa_status sa_process_common_encryption(
                         param2, process_common_encryption->out_offset);
                 samples[i].out->context.clear.offset += process_common_encryption->out_offset;
             }
+#ifdef ENABLE_SVP
+            else if (samples[i].out->buffer_type == SA_BUFFER_TYPE_SVP) {
+                samples[i].out->context.svp.offset = process_common_encryption->out_offset;
+            }
+#endif
             if (samples[i].in->buffer_type == SA_BUFFER_TYPE_CLEAR) {
                 samples[i].in->context.clear.offset += process_common_encryption->in_offset;
             }
+#ifdef ENABLE_SVP
+            else if (samples[i].in->buffer_type == SA_BUFFER_TYPE_SVP) {
+                samples[i].in->context.svp.offset = process_common_encryption->in_offset;
+            }
+#endif
             if (subsample_length_s != NULL)
                 free(subsample_length_s);
 

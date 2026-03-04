@@ -29,7 +29,12 @@ static struct {
                 .digital_unprotected_count = 0,
                 .digital_hdcp14_count = 0,
                 .digital_hdcp22_count = 1,
-                .svp_enabled = false}};
+#ifdef ENABLE_SVP
+                .svp_enabled = true
+#else
+                .svp_enabled = false
+#endif
+        }};
 
 
 bool video_output_poll(video_output_state_t* state) {

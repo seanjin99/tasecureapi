@@ -78,6 +78,14 @@ sa_status sa_crypto_cipher_process(
                 CREATE_OUT_PARAM(param1, ((uint8_t*) out->context.clear.buffer) + out->context.clear.offset,
                         param1_size);
             }
+#ifdef ENABLE_SVP
+            else if (out->buffer_type == SA_BUFFER_TYPE_SVP) {
+                cipher_process->out_offset = out->context.svp.offset;
+                param1_size = sizeof(sa_svp_buffer);
+                param1_type = TA_PARAM_IN;
+                CREATE_PARAM(param1, &out->context.svp.buffer, param1_size);
+            }
+#endif
         } else {
             cipher_process->out_offset = 0;
             param1 = NULL;
@@ -104,6 +112,13 @@ sa_status sa_crypto_cipher_process(
             param2_size = in->context.clear.length - in->context.clear.offset;
             CREATE_PARAM(param2, ((uint8_t*) in->context.clear.buffer) + in->context.clear.offset, param2_size);
         }
+#ifdef ENABLE_SVP
+        else if (in->buffer_type == SA_BUFFER_TYPE_SVP) {
+            cipher_process->in_offset = in->context.svp.offset;
+            param2_size = sizeof(sa_svp_buffer);
+            CREATE_PARAM(param2, &in->context.svp.buffer, param2_size);
+        }
+#endif
 
         // clang-format off
         uint32_t param_types[NUM_TA_PARAMS] = {TA_PARAM_INOUT, param1_type, param2_type, TA_PARAM_NULL};
@@ -124,11 +139,21 @@ sa_status sa_crypto_cipher_process(
                         cipher_process->out_offset);
                 out->context.clear.offset += cipher_process->out_offset;
             }
+#ifdef ENABLE_SVP
+            else if (out->buffer_type == SA_BUFFER_TYPE_SVP) {
+                out->context.svp.offset = cipher_process->out_offset;
+            }
+#endif
         }
 
         if (in->buffer_type == SA_BUFFER_TYPE_CLEAR) {
             in->context.clear.offset += cipher_process->in_offset;
         }
+#ifdef ENABLE_SVP
+        else if (in->buffer_type == SA_BUFFER_TYPE_SVP) {
+            in->context.svp.offset = cipher_process->in_offset;
+        }
+#endif
 
         *bytes_to_process = cipher_process->bytes_to_process;
     } while (false);
