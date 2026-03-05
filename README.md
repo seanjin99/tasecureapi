@@ -5,9 +5,10 @@
 1. [Introduction](#introduction)
 2. [Terms and Definitions](#terms-and-definitions)
 3. [SecAPI Overview](#secapi-overview)
-4. [Sample Use Cases](#sample-use-cases)
-5. [Robustness Rules](#robustness-rules)
-6. [References](#references)
+4. [Build](#build)
+5. [Sample Use Cases](#sample-use-cases)
+6. [Robustness Rules](#robustness-rules)
+7. [References](#references)
 
 ## Introduction
 
@@ -140,14 +141,16 @@ container as well as authenticate the container.
 
 The API provides the following cryptographic capabilities:
 
-* AES cipher algorithm using ECB, CBC, and CTR mode.
-* AES GCM authenticated encryption and decryption.
-* RSA decryption using PKCS and OAEP padding.
-* RSA signature generation using PKCS and PSS padding.
-* ECDSA signature generation.
-* HMAC calculation using SHA1, SHA-256, SHA-384, and SHA-512.
-* AES CMAC calculation.
-* Random number generation.
+| Category | Operations |
+|---|---|
+| Symmetric | AES-CBC, AES-ECB, AES-CTR, AES-GCM (128/256-bit) |
+| Asymmetric | RSA (sign/verify, encrypt/decrypt, PKCS/OAEP padding, 1024–4096 bit), ECDSA (P-256, P-384, P-521), ECDH |
+| Hashing | SHA-1, SHA-256, SHA-384, SHA-512 |
+| MAC | HMAC (SHA-1, SHA-256, SHA-384, SHA-512), CMAC |
+| KDF | HKDF, Concat KDF, multi-round KDF |
+| Key Exchange | DH, ECDH (NIST curves), X25519, X448 |
+| Signature | RSA-PSS, RSA-PKCS1v15, ECDSA, Ed25519, Ed448 |
+| RNG | Random number generation |
 
 Public key operations are out of scope for the API. Digest operations are also out of scope for the
 API since digest operations do not require access to keys.
@@ -174,6 +177,52 @@ ensure sufficient decryption performance in order to prevent poor video playback
 This reference implementation is implemented with simple examples of how to perform cryptographic
 operations using OpenSSL. It has not been optimized to provide the fastest possible cryptographic
 operations.
+
+## Build
+
+### Prerequisites
+
+- macOS (ARM64 or Intel) or Linux
+- CMake 3.16+
+
+All dependencies are automatically resolved during the build:
+- **OpenSSL** — TLS Engine/Provider integration, test harness crypto verification; found on system if available, otherwise fetched from GitHub and built from source
+- **mbedTLS** — primary cryptographic backend for the TA implementation (AES, RSA, ECC, hashing, HMAC, CMAC)
+- **yajl** — JSON parsing for key containers and provisioning data
+- **libdecaf** — Ed448/X448 elliptic curve operations (EdDSA signatures, ECDH key exchange)
+- **ed25519-donna** — Ed25519 EdDSA signature operations
+- **curve25519-donna** — X25519 ECDH key exchange operations
+
+All library versions are defined in `reference/cmake/deps.cmake`.
+
+### Native Build (macOS / Linux)
+
+```bash
+mkdir build && cd build
+cmake .. -DENABLE_SVP=OFF -DCMAKE_BUILD_TYPE=Debug
+make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
+```
+
+> **Note:** If OpenSSL is not installed on the system, CMake will fetch and build
+> it from source. In this case you **must** use `make -j1` for the first build —
+> parallel builds will fail because the OpenSSL build must complete before
+> dependent targets can compile. Subsequent rebuilds can use `-j` normally.
+
+### Build Flow (macOS / Linux)
+
+```mermaid
+flowchart TD
+    subgraph "Native Build (macOS / Linux)"
+        A[cmake ..] --> B{System OpenSSL found?}
+        B -->|Yes| C[Use system OpenSSL]
+        B -->|No| D[Fetch OpenSSL 3.x from GitHub & build]
+        C --> E[Fetch deps via deps.cmake]
+        D --> E
+        E --> F["mbedTLS, yajl, libdecaf, ed25519-donna, curve25519-donna"]
+        F --> G[make -j]
+        G --> H[saclienttest / taimpltest / util_*_test]
+    end
+```
 
 ## Sample Use Cases
 

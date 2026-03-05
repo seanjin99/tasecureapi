@@ -47,14 +47,9 @@ if (DEFINED DISABLE_CENC_1000000_TESTS)
     set(CMAKE_C_FLAGS "-DDISABLE_CENC_1000000_TESTS ${CMAKE_C_FLAGS}")
 endif ()
 
-if(BUILD_UTIL_OPENSSL)
-    # Skip find_package if OpenSSL paths are already provided (cross-compile scenario)
-    if(NOT OPENSSL_INCLUDE_DIR)
-        find_package(OpenSSL REQUIRED)
-    else()
-        message(STATUS "Using provided OpenSSL paths: ${OPENSSL_INCLUDE_DIR}")
-    endif()
-endif()
+# OpenSSL is configured by the openssl provider in providers/openssl/
+# OPENSSL_INCLUDE_DIR and OPENSSL_CRYPTO_LIBRARY are set by the provider
+# (auto-fetched from source, found on system, or provided for cross-compile)
 
 # Core sources (always included)
 set(SACLIENT_CORE_SOURCES

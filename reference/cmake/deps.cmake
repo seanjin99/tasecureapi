@@ -12,6 +12,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # =============================================================================
+# OpenSSL - TLS and cryptographic library (Engine API 1.x / Provider API 3.x)
+# =============================================================================
+set(DEPS_OPENSSL_GIT_REPO "https://github.com/openssl/openssl.git")
+set(DEPS_OPENSSL_GIT_TAG "openssl-3.6.0")
+
+# =============================================================================
 # mbedTLS - Cryptographic library (TLS, ciphers, hashes, etc.)
 # =============================================================================
 set(DEPS_MBEDTLS_GIT_REPO "https://github.com/Mbed-TLS/mbedtls.git")

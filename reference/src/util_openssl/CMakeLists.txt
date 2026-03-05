@@ -19,12 +19,9 @@ cmake_minimum_required(VERSION 3.16)
 
 project(util_openssl)
 
-# Skip find_package if OpenSSL paths are already provided (cross-compile scenario)
-if(NOT OPENSSL_INCLUDE_DIR)
-    find_package(OpenSSL REQUIRED)
-else()
-    message(STATUS "Using provided OpenSSL paths: ${OPENSSL_INCLUDE_DIR}")
-endif()
+# OpenSSL is configured by the openssl provider in providers/openssl/
+# OPENSSL_INCLUDE_DIR and OPENSSL_CRYPTO_LIBRARY are set by the provider
+# (auto-fetched from source, found on system, or provided for cross-compile)
 
 set(HEADERS
         "${CMAKE_CURRENT_SOURCE_DIR}/include/common.h"

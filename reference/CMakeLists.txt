@@ -22,6 +22,7 @@ project(tasecureapi)
 option(BUILD_TESTS  "Builds and installs the unit tests" ON)
 option(BUILD_DOC    "Build documentation" ON)
 option(ENABLE_SVP  "Build SecAPI with SVP" OFF)
+option(BUILD_UTIL_OPENSSL "Build OpenSSL-dependent components (Engine/Provider)" ON)
 
 if(ENABLE_SVP)
     message(STATUS "ENABLE_SVP is ON: Building SecAPI with SVP functionality")
@@ -38,5 +39,11 @@ endif()
 # Setup mbedTLS before adding subdirectories so all sub-projects can use it
 # mbedTLS is configured in src/taimpl/src/internal/providers/mbedtls/
 add_subdirectory(src/taimpl/src/internal/providers/mbedtls)
+
+# Setup OpenSSL — auto-fetches from source if not found on the system
+# Cross-compile (Yocto) provides OPENSSL_INCLUDE_DIR; native builds find or fetch
+if(BUILD_UTIL_OPENSSL)
+    add_subdirectory(src/taimpl/src/internal/providers/openssl)
+endif()
 
 add_subdirectory(src)
