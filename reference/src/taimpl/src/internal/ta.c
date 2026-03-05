@@ -23,6 +23,7 @@
 #include "ta_sa.h"
 #include <memory.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 #define CHECK_NOT_TA_PARAM_NULL(param_type, param) ((param_type) != TEEC_NONE || (param).mem_ref != NULL || \
@@ -1578,7 +1579,9 @@ static sa_status ta_invoke_svp_buffer_create(
         return SA_STATUS_INVALID_PARAMETER;
     }
 
-    return ta_sa_svp_buffer_create(&svp_buffer_create->svp_buffer, (void*) svp_buffer_create->svp_memory, // NOLINT
+    // Use uintptr_t intermediate cast to avoid -Wint-to-pointer-cast on
+    // 32-bit platforms where sizeof(void*) != sizeof(uint64_t).
+    return ta_sa_svp_buffer_create(&svp_buffer_create->svp_buffer, (void*)(uintptr_t) svp_buffer_create->svp_memory, // NOLINT
             svp_buffer_create->size, context->client, uuid);
 }
 static sa_status ta_invoke_svp_buffer_release(
@@ -1603,8 +1606,12 @@ static sa_status ta_invoke_svp_buffer_release(
     }
 
     size_t release_size = svp_buffer_release->size;
-    sa_status status = ta_sa_svp_buffer_release((void**) &svp_buffer_release->svp_memory, &release_size,
+    // Use a local void* to avoid casting uint64_t* to void** which is
+    // undefined behavior on 32-bit platforms (different pointer sizes).
+    void* release_memory = NULL;
+    sa_status status = ta_sa_svp_buffer_release(&release_memory, &release_size,
             svp_buffer_release->svp_buffer, context->client, uuid);
+    svp_buffer_release->svp_memory = (uint64_t)(uintptr_t) release_memory;
 	svp_buffer_release->size = release_size;
 	return status;
 }

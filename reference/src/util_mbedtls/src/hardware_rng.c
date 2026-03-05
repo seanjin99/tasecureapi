@@ -56,7 +56,7 @@ int hardware_rng_init(void) {
     if (hwrng_fd >= 0) {
         return 0;  // Already initialized
     }
-    
+
     // Try /dev/hwrng first (dedicated hardware RNG)
     int test_fd = open("/dev/hwrng", O_RDONLY | O_NONBLOCK);
     if (test_fd >= 0) {
@@ -72,14 +72,14 @@ int hardware_rng_init(void) {
         // hwrng opened but returned EAGAIN/0 bytes - not usable
         close(test_fd);
     }
-    
+
     // Fallback to /dev/urandom (kernel CSPRNG, always works)
     hwrng_fd = open("/dev/urandom", O_RDONLY);
     if (hwrng_fd >= 0) {
         rng_source = "/dev/urandom";
         return 0;
     }
-    
+
     // TODO: Consider using getrandom() syscall (Linux 3.17+) as a future fallback
     // if neither /dev/hwrng nor /dev/urandom is available.
     // #include <sys/random.h>
@@ -99,16 +99,21 @@ void hardware_rng_cleanup(void) {
 
 int hardware_rng_poll(void *data, unsigned char *output, size_t len, size_t *olen) {
     (void)data;
-    
+
+    if (len == 0) {
+        *olen = 0;
+        return 0;
+    }
+
     if (hwrng_fd < 0) {
         if (hardware_rng_init() != 0) {
             *olen = 0;
             return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
         }
     }
-    
+
     ssize_t bytes_read = read(hwrng_fd, output, len);
-    
+
     // If read fails or returns 0, fallback to urandom on this call
     if (bytes_read <= 0) {
         // Even if we're supposed to be using urandom (from init),
@@ -119,12 +124,12 @@ int hardware_rng_poll(void *data, unsigned char *output, size_t len, size_t *ole
             close(urandom_fd);
         }
     }
-    
+
     if (bytes_read > 0) {
         *olen = (size_t)bytes_read;
         return 0;
     }
-    
+
     // Still no bytes - this is a real failure
     *olen = 0;
     return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
@@ -151,7 +156,7 @@ int hardware_rng_init(void) {
     if (random_fd >= 0) {
         return 0;
     }
-    
+
     // macOS/BSD use /dev/random (non-blocking, cryptographically secure)
     random_fd = open("/dev/random", O_RDONLY);
     return (random_fd >= 0) ? 0 : -1;
@@ -166,21 +171,21 @@ void hardware_rng_cleanup(void) {
 
 int hardware_rng_poll(void *data, unsigned char *output, size_t len, size_t *olen) {
     (void)data;
-    
+
     if (random_fd < 0) {
         if (hardware_rng_init() != 0) {
             *olen = 0;
             return 0;
         }
     }
-    
+
     ssize_t bytes_read = read(random_fd, output, len);
-    
+
     if (bytes_read < 0) {
         *olen = 0;
         return -1;
     }
-    
+
     *olen = (size_t)bytes_read;
     return 0;
 }
@@ -207,32 +212,32 @@ const char* hardware_rng_get_info(void) {
 
 #if defined(__aarch64__) || defined(__ARM_ARCH_8A) || defined(__ARM_ARCH_8__)
 // ARMv8 64-bit
-static inline unsigned long smc_call(unsigned long func_id, 
+static inline unsigned long smc_call(unsigned long func_id,
                                     unsigned long arg1,
-                                    unsigned long arg2, 
+                                    unsigned long arg2,
                                     unsigned long arg3) {
     register unsigned long x0 asm("x0") = func_id;
     register unsigned long x1 asm("x1") = arg1;
     register unsigned long x2 asm("x2") = arg2;
     register unsigned long x3 asm("x3") = arg3;
-    
+
     asm volatile("smc #0" : "+r"(x0) : "r"(x1), "r"(x2), "r"(x3) : "memory");
-    
+
     return x0;
 }
 #else
 // ARMv7 32-bit
-static inline uint32_t smc_call(uint32_t func_id, 
+static inline uint32_t smc_call(uint32_t func_id,
                                 uint32_t arg1,
-                                uint32_t arg2, 
+                                uint32_t arg2,
                                 uint32_t arg3) {
     register uint32_t r0 asm("r0") = func_id;
     register uint32_t r1 asm("r1") = arg1;
     register uint32_t r2 asm("r2") = arg2;
     register uint32_t r3 asm("r3") = arg3;
-    
+
     asm volatile("smc #0" : "+r"(r0) : "r"(r1), "r"(r2), "r"(r3) : "memory");
-    
+
     return r0;
 }
 #endif
@@ -247,17 +252,17 @@ void hardware_rng_cleanup(void) {
 
 int hardware_rng_poll(void *data, unsigned char *output, size_t len, size_t *olen) {
     (void)data;
-    
-    unsigned long result = smc_call(SMC_RNG_GET_RANDOM, 
+
+    unsigned long result = smc_call(SMC_RNG_GET_RANDOM,
                                    (unsigned long)output,
                                    (unsigned long)len,
                                    0);
-    
+
     if (result == 0) {
         *olen = len;
         return 0;
     }
-    
+
     *olen = 0;
     return -1;
 }
@@ -286,7 +291,7 @@ int hardware_rng_poll(void *data, unsigned char *output, size_t len, size_t *ole
     (void)data;
     (void)output;
     (void)len;
-    
+
     *olen = 0;
     return 0;  // No hardware RNG available
 }

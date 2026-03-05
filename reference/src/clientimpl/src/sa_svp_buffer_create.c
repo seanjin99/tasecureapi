@@ -21,6 +21,7 @@
 #include "sa.h"
 #include "ta_client.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 sa_status sa_svp_buffer_create(
         sa_svp_buffer* svp_buffer,
@@ -49,7 +50,9 @@ sa_status sa_svp_buffer_create(
         CREATE_COMMAND(sa_svp_buffer_create_s, svp_buffer_create);
         svp_buffer_create->api_version = API_VERSION;
         svp_buffer_create->svp_buffer = *svp_buffer;
-        svp_buffer_create->svp_memory = (uint64_t) svp_memory;
+        // Use uintptr_t intermediate cast to avoid -Wint-to-pointer-cast on
+        // 32-bit platforms where sizeof(void*) != sizeof(uint64_t).
+        svp_buffer_create->svp_memory = (uint64_t)(uintptr_t) svp_memory;
         svp_buffer_create->size = size;
 
         // clang-format off

@@ -21,6 +21,7 @@
 #include "sa.h"
 #include "ta_client.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 sa_status sa_svp_buffer_release(
         void** svp_memory,
@@ -63,7 +64,9 @@ sa_status sa_svp_buffer_release(
             break;
         }
 
-        *svp_memory = (void*) svp_buffer_release->svp_memory; // NOLINT
+        // Use uintptr_t intermediate cast to avoid -Wpointer-to-int-cast on
+        // 32-bit platforms where sizeof(void*) != sizeof(uint64_t).
+        *svp_memory = (void*)(uintptr_t) svp_buffer_release->svp_memory; // NOLINT
         *size = svp_buffer_release->size;
     } while (false);
 
