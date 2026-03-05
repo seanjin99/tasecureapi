@@ -233,7 +233,7 @@ All source code lives under `reference/src/`. The directory is organized into la
 |---|---|
 | `client/` | Public API headers (`sa.h`, `sa_crypto.h`, `sa_key.h`, `sa_svp.h`, `sa_cenc.h`, etc.) and the client library. This is what applications include to use SecAPI. |
 | `clientimpl/` | Client implementation that bridges the public API to the Trusted Application layer. Marshals/unmarshals data between REE client code and the TA. |
-| `taimpl/` | Core Trusted Application implementation containing all cryptographic logic, key management, cipher/MAC/digest stores, and protocol-specific encryption (Netflix, CENC). Pluggable crypto backends live under `taimpl/src/internal/providers/` — mbedTLS, OpenSSL, libdecaf, ed25519-donna, and curve25519-donna. |
+| `taimpl/` | Core Trusted Application implementation containing all cryptographic logic, key management, cipher/MAC/digest stores, and protocol-specific encryption (Netflix, CENC). Crypto backends live under `taimpl/src/internal/providers/` — mbedTLS, libdecaf, ed25519-donna, and curve25519-donna. An `openssl/` directory also exists under providers for build management purposes (OpenSSL auto-fetch); it is used only by taimpltest, not by the TA itself. |
 | `util/` | Shared utility library with **no crypto dependency**. Provides logging, digest helpers, and key-rights management used by all other modules. |
 | `util_mbedtls/` | mbedTLS-specific utilities: PKCS8/PKCS12 key format parsing, digest wrappers, hardware RNG abstraction, and mbedTLS test helpers. Built when the mbedTLS backend is selected. |
 | `util_openssl/` | OpenSSL-specific utilities: PKCS8/PKCS12 key format parsing, digest mechanism abstraction, and OpenSSL test helpers. Built when the OpenSSL backend is selected. |
