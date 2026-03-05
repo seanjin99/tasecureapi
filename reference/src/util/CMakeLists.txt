@@ -48,6 +48,7 @@ add_library(util STATIC
 
         src/digest_util.c
         src/log.c
+        src/root_keystore.c
         src/sa_rights.c
         )
 

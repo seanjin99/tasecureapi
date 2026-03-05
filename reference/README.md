@@ -1,106 +1,90 @@
 # Security API Reference Implementation
 
+> For project overview, cryptographic capabilities, source structure, and basic build instructions
+> see the [root README](../README.md).
+
 ## Summary
 
 This library is the reference implementation of the Comcast Security API v3+. SoC vendors are
 responsible for implementing this layer, including both the REE client interface and TA client
 interface, as well as the backing implementation in TEE.
 
-In this reference implementation, the functionality is implemented using OpenSSL.
+The TA cryptographic backend uses mbedTLS, libdecaf, ed25519-donna, and curve25519-donna.
+OpenSSL is used only by the test harnesses (saclienttest, taimpltest, util_openssl_test).
 
-## Directories
+## Vendor Porting Rules
 
-### 'client'
+See the [Source Structure](../README.md#source-structure) section in the root README for a
+description of each directory. The rules below specify what SoC vendors **may** and **must**
+modify.
 
-This directory contains the client facing SecAPI headers, as well as the unit test suite for the
-SecAPI.
+### client/
 
-This folder should be copied over from the reference implementation to the SoC vendor
-implementation as-is, without any changes. Comcast will update the reference implementation and
-unit tests over time and will expect SoC vendors to keep this folder up to date. Some unit tests,
-like sa_key_import_soc.cpp, may be modified by the vendor, especially if the vendor library does
-not support a particular feature. The vendor *MUST* declare to Comcast which unit tests have been
-modified.
+Copy as-is — do **not** modify. Comcast will update reference headers and unit tests over time;
+vendors *MUST* keep this folder in sync. Some unit tests (e.g. `sa_key_import_soc.cpp`) may be
+modified if the vendor library does not support a particular feature. The vendor *MUST* declare to
+Comcast which unit tests have been modified.
 
-### 'clientimpl'
+### clientimpl/
 
-This directory contains the reference implementation of the SecAPI client library that dispatches
-client calls to the SecAPI TA. It is responsible for the serialization of parameters and transport
-to the TA.
+Only the files in the `internal` directory need to be modified. All other code in `src/` is
+platform independent and should *NOT* be modified.
 
-Client implementation library is required to be ported to both the host (REE) environment for use
-by client applications, as well as the TEE environment for use by TA clients.
+Some TEEs require communication through shared memory; to enable it define the compile-time flag
+`USE_SHARED_MEMORY`. Vendors *MUST* implement the client-side functions defined in the porting
+directory: `ta_open_session`, `ta_close_session`, `ta_invoke_command`,
+`ta_alloc_shared_memory`, and `ta_free_shared_memory` (declared in `ta_client.h`, example
+implementations in `ta_client.c`).
 
-Only the files in the 'internal' directory need to be modified. All other code in the src directory
-is platform independent and should *NOT* be modified.
-
-clientimpl code performs the marshaling of calls from API calls into the TA. Some TEEs require
-communication through shared memory, others may be able to use standard memory between the processor
-and the TEE. To use shared memory, define the compile time flag USE_SHARED_MEMORY. Vendors *MUST*
-implement the client-side functions defined in the porting directory: ta_open_session,
-ta_close_session, ta_invoke_command, ta_alloc_shared_memory, and ta_free_shared_memory which are
-defined in ta_client.h. Example implementations are in ta_client.c. ta_client.h also defines the
-macros, controlled by the compile time USE_SHARED_MEMORY flag, that determine whether shared memory
-or standard memory is used by the client-side library.
-
-Vendors *MUST* implement code identified by ```TODO SoC Vendor``` in files in the src/porting
+Vendors *MUST* implement code identified by `TODO SoC Vendor` in files in the `src/porting`
 directory.
 
-Vendors may modify code in the src/internal if needed.
+### taimpl/
 
-### 'taimpl'
+Only the files in `include/internal`, `include/porting`, `src/internal`, and `src/porting` need
+to be modified. All other code is platform independent and should *NOT* be modified.
 
-This directory contains the reference implementation of the SecAPI TA. TA is responsible for
-servicing client requests.
+Vendors *MUST* implement code to call the TA-side functions: `ta_open_session_handler`,
+`ta_close_session_handler`, and `ta_invoke_command_handler` (declared in `ta.h`, implemented in
+`ta.c`).
 
-Only the files in the include/internal, include/porting, src/internal, and src/porting directories
-need to be modified. All other code in the src and include directories is platform independent and
-should *NOT* be modified.
+Vendors *MUST* implement code identified by `TODO SoC Vendor` in files in `include/porting` and
+`src/porting`.
 
-Vendors *MUST* implement code to call the TA-side functions: ta_open_session_handler,
-ta_close_session_handler, and ta_invoke_command_handler which defined in ta.h and implemented in
-ta.c.
+`include/internal` and `src/internal` contain the mbedTLS-based cryptographic implementation.
+Vendors may modify these directories to replace the crypto backend with a SoC-specific
+implementation.
 
-Vendors *MUST* implement code identified by ```TODO SoC Vendor``` in files in the include/porting
-and src/porting directories.
+### util/
 
-include/internal and src/internal directories contain the OpenSSL implementation of SecApi 3.
-Vendors may modify code in the include/internal and src/internal directories if needed to replace
-the OpenSSL cryptographic implementation with a SoC specific cryptographic implementation.
+Contains code to read a secret symmetric root key from an embedded PKCS 12 key store. The
+reference implementation provides a default test root key embedded in `include/root_keystore.h`
+and `src/root_keystore.c` as a compiled-in byte array, encrypted with a default password
+(`DEFAULT_ROOT_KEYSTORE_PASSWORD`). The key is loaded directly from the embedded array at
+runtime — no external file or environment variable is needed.
 
-### 'util'
+To use a different key store, replace the array in `src/root_keystore.c` and update the
+password in `include/root_keystore.h`, then rebuild.
 
-This directory contains common functions that are used by both the REE client as well as the TA
-implementation. This directory contains code to read a secret symmetric root key from a PKCS 12 key
-store. This code is only used by the reference implementation and allows the reference implementation to
-be used for testing purposes with a key that is delivered by a keying provider. The reference
-implementation provides a default test root key embedded in include/root_keystore.h that is encrypted
-with a default password. This default password is also embedded in include/root_keystore.h so the key can
-be easily decrypted in tests. If a test root key is provided by a keying provider, the keying provider
-should use a different password to the PKCS 12 key store. To change the default test PKCS 12 key store
-and password for the reference implementation and for executing the tests, set the ROOT_KEYSTORE
-environment variable with the location of the PKCS 12 key store file and the ROOT_KEYSTORE_PASSWORD
-environment variable with the password.
+NOTE — this implementation reads PKCS 12 Secret Bags in the proprietary format created by Java's
+`keytool` application.
 
-NOTE - OpenSSL does not support PKCS 12 Secret Bags since there is no industry specification for the
-contents of a Secret Bag. This implementation reads a PKCS 12 key store that is created by Java's
-keytool application, which creates a proprietary format of a Secret Bag.
+### util_mbedtls/ and util_openssl/
 
-## Building
+Do **not** modify. Keep in sync with the reference implementation. These provide backend-specific
+test utilities (PKCS8/PKCS12 parsing, digest wrappers) and are selected automatically based on the
+build configuration.
 
-Generate make files using `cmake`
-Add -DCMAKE_INSTALL_PREFIX=<directory> to install to a non-standard install directory.
+## Build Options
 
-The build assumes that the following packages have already been installed:
-YAJL - include -DYAJL_ROOT=<directory> if not found
-OPENSSL - include -DOPENSSL_ROOT_DIR=<directory> if not found
+See the [Build](../README.md#build) section in the root README for prerequisites and basic build
+instructions. The options below are additional cmake flags for vendor and test configurations.
 
-OpenSSL 1.0.2 and 3.0.0+ is supported. OpenSSL 1.1.1j+ is supported.
-
-SoC and root key tests are also disabled by default. To enable these tests, add -DENABLE_SOC_KEY_TESTS=1. The TEST_KEY
-key defined in sa_key_common.cpp must match the root key defined on the test device for these tests to pass.
-
--DDISABLE_CENC_1000000_TESTS=true can be added to disable 1KB sample common encryption tests.
+| Flag | Default | Description |
+|---|---|---|
+| `CMAKE_INSTALL_PREFIX` | system default | Install to a non-standard directory |
+| `ENABLE_SOC_KEY_TESTS` | OFF | Enable SoC and root key tests. `TEST_KEY` in `sa_key_common.cpp` must match the root key on the test device. |
+| `DISABLE_CENC_1000000_TESTS` | OFF | Disable 1 KB sample common encryption tests |
 
 ### SVP (Secure Video Pipeline) Support
 
@@ -168,46 +152,8 @@ This copies the include files, the library, libsaclient.(so/dll/dylib) containin
 extension .so/.dll/.dylib created depends on which platform you are building on), and the test application,
 saclienttest and taimpltest, to their appropriate locations on the system.
 
-### Build artifacts
-
-#### saclient
-
-This is a client library that client applications link against. It exposes the public, platform
-independent SecAPI header files, and links with the platform specific client implementation library
-(saclientimpl).  Comcast is responsible for maintaining the public headers exposed by the SecAPI,
-while the SoC vendors are responsible for implementing the client library.
-
-#### saclienttest
-
-This is a SecAPI unit test suite that uses the SecAPI public interfaces to test the functionality
-of the implementation.  It links against saclient. Comcast is responsible for implementing these
-tests.
-
-To Run Key Provision File Based Tests, please refer to:
+To run Key Provision file-based tests, refer to
 [SecApiKeyProvisionTaTests.md](./test/SecApiKeyProvisionTaTests.md).
-
-#### saclientimpl
-
-This is a library that implements the SecAPI client interfaces. This library is implemented by the
-SoC vendor and it conforms to the interfaces specified in saclient.
-
-#### taimpl
-
-This component is the SecAPI TA that is responsible for processing client requests. The TA is
-intended to run in a TEE.
-
-#### taimpltest
-
-This is a SecAPI unit test suite that must be run from inside a TA against the TA code directly.
-It executes tests as if another TA were calling into the SecApi 3 TA.
-
-#### util
-
-This is a library that implements utility functions used by the other libraries.
-
-#### utiltest
-
-This is a unit test suite for testing the utility library functions.
 
 ## Versioning
 
@@ -243,7 +189,7 @@ The secure heap shall be used for storing unencrypted key material while in use.
 
 clang-format is used to format all code according to the settings in the associated
 .clang-format file. All attempts were used to use descriptive variable names and predefined
-constants instead of magic numbers. When the OpenSSL library is used, standard OpenSSL usage
+constants instead of magic numbers. When calling OpenSSL APIs (in test utilities), standard OpenSSL
 convention is followed by testing return values against the value 1 which represents success.
 
 clang-tidy is a linting tool used to diagnose and fixing typical programming errors.

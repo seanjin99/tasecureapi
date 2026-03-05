@@ -1257,14 +1257,10 @@ bool load_pkcs12_secret_key_mbedtls(
         size_t* name_length)
 {
     int ret;
-    FILE *f = NULL;
     unsigned char *buf = NULL;
     size_t file_len;
 
-    // Get password from environment (matching OpenSSL behavior)
-    const char* password = getenv("ROOT_KEYSTORE_PASSWORD");
-    if (password == NULL)
-        password = DEFAULT_ROOT_KEYSTORE_PASSWORD;
+    const char* password = DEFAULT_ROOT_KEYSTORE_PASSWORD;
 
     // OpenSSL-compatible logic: determine requested_common_root from input name
     size_t in_name_length = *name_length;
@@ -1273,41 +1269,13 @@ bool load_pkcs12_secret_key_mbedtls(
 
     DEBUG_PRINT("DEBUG: requested_common_root = %s\n", requested_common_root ? "true" : "false");
 
-    // Check if using file or embedded keystore
-    const char* filename = getenv("ROOT_KEYSTORE");
-    if (filename != NULL) {
-        // Read file
-        f = fopen(filename, "rb");
-        if (f == NULL) {
-            printf("Failed to open file: %s\n", filename);
-            return false;
-        }
-
-        fseek(f, 0, SEEK_END);
-        file_len = ftell(f);
-        fseek(f, 0, SEEK_SET);
-
-        buf = mbedtls_calloc(1, file_len);
-        if (buf == NULL) {
-            fclose(f);
-            return MBEDTLS_ERR_ASN1_ALLOC_FAILED;
-        }
-
-        if (fread(buf, 1, file_len, f) != file_len) {
-            mbedtls_free(buf);
-            fclose(f);
-            return -1;
-        }
-        fclose(f);
-    } else {
-        // Use embedded keystore
-        file_len = sizeof(default_root_keystore);
-        buf = mbedtls_calloc(1, file_len);
-        if (buf == NULL) {
-            return MBEDTLS_ERR_ASN1_ALLOC_FAILED;
-        }
-        memcpy(buf, default_root_keystore, file_len);
+    // Load from embedded keystore
+    file_len = default_root_keystore_size;
+    buf = mbedtls_calloc(1, file_len);
+    if (buf == NULL) {
+        return MBEDTLS_ERR_ASN1_ALLOC_FAILED;
     }
+    memcpy(buf, default_root_keystore, file_len);
 
     // Parse PKCS#12
     // PFX ::= SEQUENCE {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 Comcast Cable Communications Management, LLC
+ * Copyright 2020-2026 Comcast Cable Communications Management, LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,24 +16,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "pkcs12_mbedtls.h" // mbedTLS PKCS#12 implementation
+#include "pkcs12_mbedtls.h"
 #include "common.h"
+#include "root_keystore.h"
 #include "gtest/gtest.h"
-#include <cstdlib>
 
 namespace {
     TEST(Pkcs12Test, parsePkcs12) {
-        setenv("ROOT_KEYSTORE_PASSWORD", DEFAULT_ROOT_KEYSTORE_PASSWORD, 1);
-        setenv("ROOT_KEYSTORE", "root_keystore.p12", 1);
-
         uint8_t key[SYM_256_KEY_SIZE];
         size_t key_length = SYM_256_KEY_SIZE;
         char name[MAX_NAME_SIZE];
         size_t name_length = MAX_NAME_SIZE;
         name[0] = '\0';
 
-        // Use mbedTLS PKCS#12 implementation
-        printf("✅ Using mbedTLS PKCS#12 API: load_pkcs12_secret_key_mbedtls()\n");
+        printf("Using mbedTLS PKCS#12 API with embedded keystore\n");
         ASSERT_EQ(load_pkcs12_secret_key_mbedtls(key, &key_length, name, &name_length), true);
         ASSERT_EQ(key_length, SYM_128_KEY_SIZE);
         ASSERT_EQ(name_length, 16);
@@ -41,17 +37,13 @@ namespace {
     }
 
     TEST(Pkcs12Test, parsePkcs12Common) {
-        setenv("ROOT_KEYSTORE_PASSWORD", DEFAULT_ROOT_KEYSTORE_PASSWORD, 1);
-        setenv("ROOT_KEYSTORE", "root_keystore.p12", 1);
-
         uint8_t key[SYM_256_KEY_SIZE];
         size_t key_length = SYM_256_KEY_SIZE;
         char name[MAX_NAME_SIZE];
         size_t name_length = MAX_NAME_SIZE;
         strcpy(name, COMMON_ROOT_NAME);
 
-        // Use mbedTLS PKCS#12 implementation
-        printf("✅ Using mbedTLS PKCS#12 API: load_pkcs12_secret_key_mbedtls()\n");
+        printf("Using mbedTLS PKCS#12 API with embedded keystore (commonroot)\n");
         ASSERT_EQ(load_pkcs12_secret_key_mbedtls(key, &key_length, name, &name_length), true);
         ASSERT_EQ(key_length, SYM_128_KEY_SIZE);
         ASSERT_EQ(name_length, 10);

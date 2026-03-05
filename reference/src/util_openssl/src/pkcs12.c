@@ -187,37 +187,19 @@ bool load_pkcs12_secret_key(
         char* name,
         size_t* name_length) {
 
-    const char* password = getenv("ROOT_KEYSTORE_PASSWORD");
-    if (password == NULL)
-        password = DEFAULT_ROOT_KEYSTORE_PASSWORD;
+    const char* password = DEFAULT_ROOT_KEYSTORE_PASSWORD;
 
     size_t in_name_length = *name_length;
     bool requested_common_root = strncmp(name, COMMON_ROOT_NAME, in_name_length) == 0;
     bool status = false;
-    FILE* file = NULL;
     PKCS12* pkcs12 = NULL;
     STACK_OF(PKCS7)* auth_safes = NULL;
     do {
-        const char* filename = getenv("ROOT_KEYSTORE");
-        if (filename != NULL) {
-            file = fopen(filename, "re");
-            if (file == NULL) {
-                ERROR("NULL file");
-                break;
-            }
-
-            pkcs12 = d2i_PKCS12_fp(file, NULL);
-            if (pkcs12 == NULL) {
-                ERROR("NULL pkcs12");
-                break;
-            }
-        } else {
-            const uint8_t *keystore = default_root_keystore;
-            pkcs12 = d2i_PKCS12(NULL, &keystore, sizeof default_root_keystore);
-            if (pkcs12 == NULL) {
-                ERROR("NULL pkcs12");
-                break;
-            }
+        const uint8_t *keystore = default_root_keystore;
+        pkcs12 = d2i_PKCS12(NULL, &keystore, default_root_keystore_size);
+        if (pkcs12 == NULL) {
+            ERROR("NULL pkcs12");
+            break;
         }
 
         if (PKCS12_verify_mac(pkcs12, password, -1) != 1) {
@@ -266,8 +248,6 @@ bool load_pkcs12_secret_key(
 
     PKCS12_free(pkcs12);
     sk_PKCS7_pop_free(auth_safes, PKCS7_free);
-    if (file != NULL)
-        fclose(file);
 
     return status;
 }

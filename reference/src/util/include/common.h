@@ -60,7 +60,4 @@
 #define MAX_PROPQUERY_SIZE 256
 #define MAX_CMAC_SIZE 64
 
-#define DEFAULT_ROOT_KEYSTORE_PASSWORD "password01234567"
-#define COMMON_ROOT_NAME "commonroot"
-
 #endif // UTIL_COMMON_H

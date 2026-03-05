@@ -18,22 +18,19 @@
 
 #include "pkcs12.h" // NOLINT
 #include "common.h"
+#include "root_keystore.h"
 #include "gtest/gtest.h"
 #include <cstdlib>
 
 namespace {
     TEST(Pkcs12TestOpenSSL, parsePkcs12) {
-        setenv("ROOT_KEYSTORE_PASSWORD", DEFAULT_ROOT_KEYSTORE_PASSWORD, 1);
-        setenv("ROOT_KEYSTORE", "root_keystore.p12", 1);
-
         uint8_t key[SYM_256_KEY_SIZE];
         size_t key_length = SYM_256_KEY_SIZE;
         char name[MAX_NAME_SIZE];
         size_t name_length = MAX_NAME_SIZE;
         name[0] = '\0';
 
-        // Use OpenSSL PKCS#12 implementation
-        printf("Using OpenSSL PKCS#12 API: load_pkcs12_secret_key()\n");
+        printf("Using OpenSSL PKCS#12 API with embedded keystore\n");
         ASSERT_EQ(load_pkcs12_secret_key(key, &key_length, name, &name_length), true);
         ASSERT_EQ(key_length, SYM_128_KEY_SIZE);
         ASSERT_EQ(name_length, 16);
@@ -41,17 +38,13 @@ namespace {
     }
 
     TEST(Pkcs12TestOpenSSL, parsePkcs12Common) {
-        setenv("ROOT_KEYSTORE_PASSWORD", DEFAULT_ROOT_KEYSTORE_PASSWORD, 1);
-        setenv("ROOT_KEYSTORE", "root_keystore.p12", 1);
-
         uint8_t key[SYM_256_KEY_SIZE];
         size_t key_length = SYM_256_KEY_SIZE;
         char name[MAX_NAME_SIZE];
         size_t name_length = MAX_NAME_SIZE;
         strcpy(name, COMMON_ROOT_NAME);
 
-        // Use OpenSSL PKCS#12 implementation
-        printf("Using OpenSSL PKCS#12 API: load_pkcs12_secret_key()\n");
+        printf("Using OpenSSL PKCS#12 API with embedded keystore (commonroot)\n");
         ASSERT_EQ(load_pkcs12_secret_key(key, &key_length, name, &name_length), true);
         ASSERT_EQ(key_length, SYM_128_KEY_SIZE);
         ASSERT_EQ(name_length, 10);
