@@ -263,7 +263,10 @@ namespace {
 
             case SA_CIPHER_ALGORITHM_AES_ECB_PKCS7:
             case SA_CIPHER_ALGORITHM_AES_CBC_PKCS7:
-                return PADDED_SIZE(bytes_to_process);
+                if (cipher_mode == SA_CIPHER_MODE_ENCRYPT)
+                    return PADDED_SIZE(bytes_to_process);
+                else
+                    return bytes_to_process;
 
             case SA_CIPHER_ALGORITHM_RSA_PKCS1V15:
             case SA_CIPHER_ALGORITHM_RSA_OAEP:

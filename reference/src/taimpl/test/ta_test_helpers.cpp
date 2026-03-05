@@ -90,6 +90,17 @@ namespace ta_test_helpers {
                             if (buffer->context.clear.buffer != nullptr)
                                 free(buffer->context.clear.buffer);
                         }
+#ifdef ENABLE_SVP
+                        else if (buffer_type == SA_BUFFER_TYPE_SVP) {
+                            if (buffer->context.svp.buffer != INVALID_HANDLE) {
+                                void* svp_memory = nullptr;
+                                size_t svp_memory_size = 0;
+                                ta_sa_svp_buffer_release(&svp_memory, &svp_memory_size,
+                                        buffer->context.svp.buffer, client(), ta_uuid());
+                                free(svp_memory);
+                            }
+                        }
+#endif // ENABLE_SVP
                     }
 
                     delete buffer;
@@ -105,6 +116,28 @@ namespace ta_test_helpers {
                 return nullptr;
             }
         }
+#ifdef ENABLE_SVP
+        else if (buffer_type == SA_BUFFER_TYPE_SVP) {
+            buffer->buffer_type = SA_BUFFER_TYPE_SVP;
+            buffer->context.svp.buffer = INVALID_HANDLE;
+            void* svp_memory = malloc(size);
+            if (svp_memory == nullptr) {
+                ERROR("malloc failed");
+                return nullptr;
+            }
+
+            sa_svp_buffer svp_buffer;
+            sa_status status = ta_sa_svp_buffer_create(&svp_buffer, svp_memory, size, client(), ta_uuid());
+            if (status != SA_STATUS_OK) {
+                ERROR("ta_sa_svp_buffer_create failed");
+                free(svp_memory);
+                return nullptr;
+            }
+
+            buffer->context.svp.buffer = svp_buffer;
+            buffer->context.svp.offset = 0;
+        }
+#endif // ENABLE_SVP
 
         return buffer;
     }
@@ -120,6 +153,17 @@ namespace ta_test_helpers {
         if (buffer_type == SA_BUFFER_TYPE_CLEAR) {
             memcpy(buffer->context.clear.buffer, initial_value.data(), initial_value.size());
         }
+#ifdef ENABLE_SVP
+        else if (buffer_type == SA_BUFFER_TYPE_SVP) {
+            sa_svp_offset offsets = {0, 0, initial_value.size()};
+            sa_status status = ta_sa_svp_buffer_write(buffer->context.svp.buffer,
+                    initial_value.data(), initial_value.size(), &offsets, 1, client(), ta_uuid());
+            if (status != SA_STATUS_OK) {
+                ERROR("ta_sa_svp_buffer_write failed");
+                return nullptr;
+            }
+        }
+#endif // ENABLE_SVP
 
         return buffer;
     }

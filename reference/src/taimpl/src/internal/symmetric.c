@@ -211,7 +211,7 @@ symmetric_context_t* symmetric_create_aes_ecb_encrypt_context(
 
         // Use direct AES API for ECB mode (doesn't support padding in cipher API)
         mbedtls_aes_init(&context->ctx.aes_ctx);
-        
+
         int ret = mbedtls_aes_setkey_enc(&context->ctx.aes_ctx, key, key_length * 8);
         if (ret != 0) {
             ERROR("mbedtls_aes_setkey_enc failed: -0x%04x", -ret);
@@ -280,27 +280,27 @@ symmetric_context_t* symmetric_create_aes_cbc_encrypt_context(
         mbedtls_cipher_init(&context->ctx.cipher_ctx);
 
         // Select cipher type based on key length
-        mbedtls_cipher_type_t cipher_type = (key_length == SYM_128_KEY_SIZE) ? 
+        mbedtls_cipher_type_t cipher_type = (key_length == SYM_128_KEY_SIZE) ?
             MBEDTLS_CIPHER_AES_128_CBC : MBEDTLS_CIPHER_AES_256_CBC;
-        
+
         const mbedtls_cipher_info_t* cipher_info = mbedtls_cipher_info_from_type(cipher_type);
         if (cipher_info == NULL) {
             ERROR("mbedtls_cipher_info_from_type failed");
             break;
         }
-        
+
         int ret = mbedtls_cipher_setup(&context->ctx.cipher_ctx, cipher_info);
         if (ret != 0) {
             ERROR("mbedtls_cipher_setup failed: -0x%04x", -ret);
             break;
         }
-        
+
         ret = mbedtls_cipher_setkey(&context->ctx.cipher_ctx, key, (int)(key_length * 8), MBEDTLS_ENCRYPT);
         if (ret != 0) {
             ERROR("mbedtls_cipher_setkey failed: -0x%04x", -ret);
             break;
         }
-        
+
         // Set padding mode
         mbedtls_cipher_padding_t padding = padded ? MBEDTLS_PADDING_PKCS7 : MBEDTLS_PADDING_NONE;
         ret = mbedtls_cipher_set_padding_mode(&context->ctx.cipher_ctx, padding);
@@ -377,27 +377,27 @@ symmetric_context_t* symmetric_create_aes_ctr_encrypt_context(
         mbedtls_cipher_init(&context->ctx.cipher_ctx);
 
         // Select cipher type based on key length
-        mbedtls_cipher_type_t cipher_type = (key_length == SYM_128_KEY_SIZE) ? 
+        mbedtls_cipher_type_t cipher_type = (key_length == SYM_128_KEY_SIZE) ?
             MBEDTLS_CIPHER_AES_128_CTR : MBEDTLS_CIPHER_AES_256_CTR;
-        
+
         const mbedtls_cipher_info_t* cipher_info = mbedtls_cipher_info_from_type(cipher_type);
         if (cipher_info == NULL) {
             ERROR("mbedtls_cipher_info_from_type failed");
             break;
         }
-        
+
         int ret = mbedtls_cipher_setup(&context->ctx.cipher_ctx, cipher_info);
         if (ret != 0) {
             ERROR("mbedtls_cipher_setup failed: -0x%04x", -ret);
             break;
         }
-        
+
         ret = mbedtls_cipher_setkey(&context->ctx.cipher_ctx, key, (int)(key_length * 8), MBEDTLS_ENCRYPT);
         if (ret != 0) {
             ERROR("mbedtls_cipher_setkey failed: -0x%04x", -ret);
             break;
         }
-        
+
         // Set counter/IV for CTR mode
         ret = mbedtls_cipher_set_iv(&context->ctx.cipher_ctx, counter, counter_length);
         if (ret != 0) {
@@ -834,7 +834,7 @@ symmetric_context_t* symmetric_create_aes_ecb_decrypt_context(
 
         // Use direct AES API for ECB mode (doesn't support padding in cipher API)
         mbedtls_aes_init(&context->ctx.aes_ctx);
-        
+
         int ret = mbedtls_aes_setkey_dec(&context->ctx.aes_ctx, key, key_length * 8);
         if (ret != 0) {
             ERROR("mbedtls_aes_setkey_dec failed: -0x%04x", -ret);
@@ -903,27 +903,27 @@ symmetric_context_t* symmetric_create_aes_cbc_decrypt_context(
         mbedtls_cipher_init(&context->ctx.cipher_ctx);
 
         // Select cipher type based on key length
-        mbedtls_cipher_type_t cipher_type = (key_length == SYM_128_KEY_SIZE) ? 
+        mbedtls_cipher_type_t cipher_type = (key_length == SYM_128_KEY_SIZE) ?
             MBEDTLS_CIPHER_AES_128_CBC : MBEDTLS_CIPHER_AES_256_CBC;
-        
+
         const mbedtls_cipher_info_t* cipher_info = mbedtls_cipher_info_from_type(cipher_type);
         if (cipher_info == NULL) {
             ERROR("mbedtls_cipher_info_from_type failed");
             break;
         }
-        
+
         int ret = mbedtls_cipher_setup(&context->ctx.cipher_ctx, cipher_info);
         if (ret != 0) {
             ERROR("mbedtls_cipher_setup failed: -0x%04x", -ret);
             break;
         }
-        
+
         ret = mbedtls_cipher_setkey(&context->ctx.cipher_ctx, key, (int)(key_length * 8), MBEDTLS_DECRYPT);
         if (ret != 0) {
             ERROR("mbedtls_cipher_setkey failed: -0x%04x", -ret);
             break;
         }
-        
+
         // Set padding mode
         mbedtls_cipher_padding_t padding = padded ? MBEDTLS_PADDING_PKCS7 : MBEDTLS_PADDING_NONE;
         ret = mbedtls_cipher_set_padding_mode(&context->ctx.cipher_ctx, padding);
@@ -1000,27 +1000,27 @@ symmetric_context_t* symmetric_create_aes_ctr_decrypt_context(
         mbedtls_cipher_init(&context->ctx.cipher_ctx);
 
         // Select cipher type based on key length
-        mbedtls_cipher_type_t cipher_type = (key_length == SYM_128_KEY_SIZE) ? 
+        mbedtls_cipher_type_t cipher_type = (key_length == SYM_128_KEY_SIZE) ?
             MBEDTLS_CIPHER_AES_128_CTR : MBEDTLS_CIPHER_AES_256_CTR;
-        
+
         const mbedtls_cipher_info_t* cipher_info = mbedtls_cipher_info_from_type(cipher_type);
         if (cipher_info == NULL) {
             ERROR("mbedtls_cipher_info_from_type failed");
             break;
         }
-        
+
         int ret = mbedtls_cipher_setup(&context->ctx.cipher_ctx, cipher_info);
         if (ret != 0) {
             ERROR("mbedtls_cipher_setup failed: -0x%04x", -ret);
             break;
         }
-        
+
         ret = mbedtls_cipher_setkey(&context->ctx.cipher_ctx, key, (int)(key_length * 8), MBEDTLS_DECRYPT);
         if (ret != 0) {
             ERROR("mbedtls_cipher_setkey failed: -0x%04x", -ret);
             break;
         }
-        
+
         // Set counter/IV for CTR mode
         ret = mbedtls_cipher_set_iv(&context->ctx.cipher_ctx, counter, counter_length);
         if (ret != 0) {
@@ -1421,16 +1421,16 @@ sa_status symmetric_context_encrypt(
         if (out_length != NULL) {
             *out_length = 0;
         }
-        
+
         size_t processed = 0;
         while (processed < in_length) {
             size_t space = 16 - context->gcm_buffer_length;
             size_t chunk = (in_length - processed < space) ? (in_length - processed) : space;
-            
+
             memcpy(context->gcm_buffer + context->gcm_buffer_length, (const uint8_t*)in + processed, chunk);
             context->gcm_buffer_length += chunk;
             processed += chunk;
-            
+
             if (context->gcm_buffer_length == 16) {
                 // Encrypt full block without padding
                 size_t current_offset = (out_length != NULL) ? *out_length : 0;
@@ -1452,7 +1452,7 @@ sa_status symmetric_context_encrypt(
         }
         for (size_t i = 0; i < in_length; i += AES_BLOCK_SIZE) {
             int ret = mbedtls_aes_crypt_ecb(&context->ctx.aes_ctx, MBEDTLS_AES_ENCRYPT,
-                                             (const unsigned char*)in + i, 
+                                             (const unsigned char*)in + i,
                                              (unsigned char*)out + i);
             if (ret != 0) {
                 ERROR("mbedtls_aes_crypt_ecb failed: -0x%04x", -ret);
@@ -1530,14 +1530,14 @@ sa_status symmetric_context_encrypt_last(
                 return SA_STATUS_INTERNAL_ERROR;
             }
         }
-        
+
         // Finalize and get the authentication tag
         ret = mbedtls_chachapoly_finish(&context->ctx.chachapoly_ctx, context->chachapoly_tag);
         if (ret != 0) {
             ERROR("mbedtls_chachapoly_finish failed: -0x%04x", -ret);
             return SA_STATUS_INTERNAL_ERROR;
         }
-        
+
         context->chachapoly_tag_length = CHACHA20_TAG_LENGTH;
         *out_length = in_length;
     } else if (context->is_chacha) {
@@ -1556,42 +1556,63 @@ sa_status symmetric_context_encrypt_last(
     } else if (context->cipher_algorithm == SA_CIPHER_ALGORITHM_AES_ECB_PKCS7) {
         // AES-ECB with PKCS7 padding - handle remaining buffered data and padding
         *out_length = 0;
-        
+
         // Combine buffered data (if any) with input data (if any)
         unsigned char padded_block[AES_BLOCK_SIZE];
         size_t total_data = context->gcm_buffer_length + in_length;
-        
+
         if (total_data > AES_BLOCK_SIZE) {
-            ERROR("Too much data for PKCS7 encrypt_last: buffered=%zu, input=%zu", 
+            ERROR("Too much data for PKCS7 encrypt_last: buffered=%zu, input=%zu",
                   context->gcm_buffer_length, in_length);
             return SA_STATUS_INVALID_PARAMETER;
         }
-        
+
         // Copy buffered data first
         if (context->gcm_buffer_length > 0) {
             memcpy(padded_block, context->gcm_buffer, context->gcm_buffer_length);
         }
-        
+
         // Then copy input data
         if (in_length > 0) {
             memcpy(padded_block + context->gcm_buffer_length, in, in_length);
         }
-        
-        // Add PKCS7 padding
-        unsigned char padding_value = AES_BLOCK_SIZE - total_data;
-        for (size_t i = total_data; i < AES_BLOCK_SIZE; i++) {
-            padded_block[i] = padding_value;
-        }
-        
-        // Encrypt the padded block
-        int ret = mbedtls_aes_crypt_ecb(&context->ctx.aes_ctx, MBEDTLS_AES_ENCRYPT,
+
+        if (total_data == AES_BLOCK_SIZE) {
+            // Block-aligned: encrypt the full data block first, then a full padding block
+            int ret = mbedtls_aes_crypt_ecb(&context->ctx.aes_ctx, MBEDTLS_AES_ENCRYPT,
+                                             padded_block, (unsigned char*)out + *out_length);
+            if (ret != 0) {
+                ERROR("mbedtls_aes_crypt_ecb failed: -0x%04x", -ret);
+                return SA_STATUS_INTERNAL_ERROR;
+            }
+            *out_length += AES_BLOCK_SIZE;
+
+            // Full padding block: 16 bytes of 0x10
+            memset(padded_block, AES_BLOCK_SIZE, AES_BLOCK_SIZE);
+            ret = mbedtls_aes_crypt_ecb(&context->ctx.aes_ctx, MBEDTLS_AES_ENCRYPT,
                                          padded_block, (unsigned char*)out + *out_length);
-        if (ret != 0) {
-            ERROR("mbedtls_aes_crypt_ecb failed: -0x%04x", -ret);
-            return SA_STATUS_INTERNAL_ERROR;
+            if (ret != 0) {
+                ERROR("mbedtls_aes_crypt_ecb failed: -0x%04x", -ret);
+                return SA_STATUS_INTERNAL_ERROR;
+            }
+            *out_length += AES_BLOCK_SIZE;
+        } else {
+            // Not block-aligned: add PKCS7 padding to partial block
+            unsigned char padding_value = AES_BLOCK_SIZE - total_data;
+            for (size_t i = total_data; i < AES_BLOCK_SIZE; i++) {
+                padded_block[i] = padding_value;
+            }
+
+            // Encrypt the padded block
+            int ret = mbedtls_aes_crypt_ecb(&context->ctx.aes_ctx, MBEDTLS_AES_ENCRYPT,
+                                             padded_block, (unsigned char*)out + *out_length);
+            if (ret != 0) {
+                ERROR("mbedtls_aes_crypt_ecb failed: -0x%04x", -ret);
+                return SA_STATUS_INTERNAL_ERROR;
+            }
+            *out_length += AES_BLOCK_SIZE;
         }
-        
-        *out_length += AES_BLOCK_SIZE;
+
         context->gcm_buffer_length = 0;
     } else {
         // AES-CBC with PKCS7 padding - use mbedTLS cipher finish
@@ -1694,7 +1715,7 @@ sa_status symmetric_context_decrypt(
         // PKCS7 decryption: Decrypt blocks but ALWAYS buffer the last 16 bytes.
         // This ensures that if the last block is padding, it's available for decrypt_last.
         // If it's not padding (because more data is coming), it will be decrypted in the next call.
-        
+
         *out_length = 0;
         size_t processed = 0;
         while (processed < in_length) {
@@ -1713,7 +1734,7 @@ sa_status symmetric_context_decrypt(
             // Fill buffer with new data
             size_t space = AES_BLOCK_SIZE - context->gcm_buffer_length;
             size_t chunk = (in_length - processed < space) ? (in_length - processed) : space;
-            
+
             memcpy(context->gcm_buffer + context->gcm_buffer_length, (const unsigned char*)in + processed, chunk);
             context->gcm_buffer_length += chunk;
             processed += chunk;
@@ -1721,12 +1742,12 @@ sa_status symmetric_context_decrypt(
     } else if (context->cipher_algorithm == SA_CIPHER_ALGORITHM_AES_ECB) {
         // AES-ECB uses direct AES API - process block by block
         *out_length = 0;
-        
+
 
         // Non-PKCS7: decrypt all blocks normally
         for (size_t i = 0; i < in_length; i += AES_BLOCK_SIZE) {
             int ret = mbedtls_aes_crypt_ecb(&context->ctx.aes_ctx, MBEDTLS_AES_DECRYPT,
-                                             (const unsigned char*)in + i, 
+                                             (const unsigned char*)in + i,
                                              (unsigned char*)out + i);
             if (ret != 0) {
                 ERROR("mbedtls_aes_crypt_ecb failed: -0x%04x", -ret);
@@ -1800,7 +1821,7 @@ sa_status symmetric_context_decrypt_last(
                 return SA_STATUS_INTERNAL_ERROR;
             }
         }
-        
+
         // Finalize and verify the authentication tag
         unsigned char computed_tag[CHACHA20_TAG_LENGTH];
         int ret = mbedtls_chachapoly_finish(&context->ctx.chachapoly_ctx, computed_tag);
@@ -1808,13 +1829,13 @@ sa_status symmetric_context_decrypt_last(
             ERROR("mbedtls_chachapoly_finish failed: -0x%04x", -ret);
             return SA_STATUS_INTERNAL_ERROR;
         }
-        
+
         // Verify the tag matches what was set
         if (memcmp(computed_tag, context->chachapoly_tag, context->chachapoly_tag_length) != 0) {
             ERROR("ChaCha20-Poly1305 tag verification failed");
             return SA_STATUS_VERIFICATION_FAILED;
         }
-        
+
         *out_length = in_length;
     } else if (context->is_chacha) {
         // ChaCha20 (without Poly1305) - just process the remaining data
@@ -1877,14 +1898,14 @@ sa_status symmetric_context_decrypt_last(
         *out_length = 0;
         unsigned char final_block[AES_BLOCK_SIZE];
         bool have_final_block = false;
-        
+
         // 1. Process buffered data
         if (context->gcm_buffer_length > 0) {
             if (context->gcm_buffer_length != AES_BLOCK_SIZE) {
                 ERROR("Invalid buffered length for PKCS7 decrypt_last: %zu", context->gcm_buffer_length);
                 return SA_STATUS_INTERNAL_ERROR;
             }
-            
+
             if (in_length > 0) {
                 // Buffer is NOT the last block, decrypt and output it
                 int ret = mbedtls_aes_crypt_ecb(&context->ctx.aes_ctx, MBEDTLS_AES_DECRYPT,
@@ -1906,15 +1927,15 @@ sa_status symmetric_context_decrypt_last(
             }
             context->gcm_buffer_length = 0;
         }
-        
+
         // 2. Process input data
         if (in_length > 0) {
             if (in_length != AES_BLOCK_SIZE) {
-                ERROR("Invalid in_length for PKCS7 decrypt_last: expected %d, got %zu", 
+                ERROR("Invalid in_length for PKCS7 decrypt_last: expected %d, got %zu",
                       AES_BLOCK_SIZE, in_length);
                 return SA_STATUS_INVALID_PARAMETER;
             }
-            
+
             // This MUST be the last block
             int ret = mbedtls_aes_crypt_ecb(&context->ctx.aes_ctx, MBEDTLS_AES_DECRYPT,
                                              (const unsigned char*)in, final_block);
@@ -1924,19 +1945,19 @@ sa_status symmetric_context_decrypt_last(
             }
             have_final_block = true;
         }
-        
+
         if (!have_final_block) {
             ERROR("No data to decrypt in decrypt_last");
             return SA_STATUS_INVALID_PARAMETER;
         }
-        
+
         // Validate and remove PKCS7 padding from final block
         unsigned char padding_value = final_block[AES_BLOCK_SIZE - 1];
         if (padding_value == 0 || padding_value > AES_BLOCK_SIZE) {
             ERROR("Invalid PKCS7 padding value: %d", padding_value);
             return SA_STATUS_VERIFICATION_FAILED;
         }
-        
+
         // Verify all padding bytes match
         for (size_t i = AES_BLOCK_SIZE - padding_value; i < AES_BLOCK_SIZE; i++) {
             if (final_block[i] != padding_value) {
@@ -1945,7 +1966,7 @@ sa_status symmetric_context_decrypt_last(
                 return SA_STATUS_VERIFICATION_FAILED;
             }
         }
-        
+
         // Output the unpadded data
         size_t unpadded_length = AES_BLOCK_SIZE - padding_value;
         memcpy((unsigned char*)out + *out_length, final_block, unpadded_length);
@@ -2044,33 +2065,33 @@ sa_status symmetric_context_reinit_for_sample(
 
     // Cast away const for modification
     symmetric_context_t* mutable_context = (symmetric_context_t*)context;
-    
+
     // For CTR mode, we need to completely reinitialize the cipher context
     // because mbedTLS doesn't properly reset internal buffers with just reset+setkey
-    
+
     // Compute cipher type from key length (don't trust mbedtls_cipher_get_type on stale context!)
-    mbedtls_cipher_type_t cipher_type = (key_length == SYM_128_KEY_SIZE) ? 
+    mbedtls_cipher_type_t cipher_type = (key_length == SYM_128_KEY_SIZE) ?
         MBEDTLS_CIPHER_AES_128_CTR : MBEDTLS_CIPHER_AES_256_CTR;
     const mbedtls_cipher_info_t* cipher_info = mbedtls_cipher_info_from_type(cipher_type);
-    
+
     if (cipher_info == NULL) {
         ERROR("mbedtls_cipher_info_from_type failed");
         return SA_STATUS_INTERNAL_ERROR;
     }
-    
+
     // Free the existing context
     mbedtls_cipher_free(&mutable_context->ctx.cipher_ctx);
-    
+
     // Re-initialize
     mbedtls_cipher_init(&mutable_context->ctx.cipher_ctx);
-    
+
     // Re-setup with the cipher info
     int ret = mbedtls_cipher_setup(&mutable_context->ctx.cipher_ctx, cipher_info);
     if (ret != 0) {
         ERROR("mbedtls_cipher_setup failed: -0x%04x", -ret);
         return SA_STATUS_INTERNAL_ERROR;
     }
-    
+
     // Set the key
     mbedtls_operation_t operation = MBEDTLS_DECRYPT;
     ret = mbedtls_cipher_setkey(&mutable_context->ctx.cipher_ctx, key, (int)(key_length * 8), operation);
@@ -2155,11 +2176,11 @@ sa_status symmetric_context_get_tag(
         /* ChaCha20-Poly1305: Use the tag that was already computed in encrypt_last()
          * DO NOT call mbedtls_chachapoly_finish() again - it was already called! */
         if (context->chachapoly_tag_length != tag_length) {
-            ERROR("Invalid tag_length: expected %zu, got %zu", 
+            ERROR("Invalid tag_length: expected %zu, got %zu",
                   context->chachapoly_tag_length, tag_length);
             return SA_STATUS_INVALID_PARAMETER;
         }
-        
+
         /* Simply copy the cached tag */
         memcpy(tag, context->chachapoly_tag, tag_length);
         return SA_STATUS_OK;
