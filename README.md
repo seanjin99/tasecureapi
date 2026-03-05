@@ -6,9 +6,10 @@
 2. [Terms and Definitions](#terms-and-definitions)
 3. [SecAPI Overview](#secapi-overview)
 4. [Build](#build)
-5. [Sample Use Cases](#sample-use-cases)
-6. [Robustness Rules](#robustness-rules)
-7. [References](#references)
+5. [Source Structure](#source-structure)
+6. [Sample Use Cases](#sample-use-cases)
+7. [Robustness Rules](#robustness-rules)
+8. [References](#references)
 
 ## Introduction
 
@@ -222,6 +223,35 @@ flowchart TD
         F --> G[make -j]
         G --> H[saclienttest / taimpltest / util_*_test]
     end
+```
+
+## Source Structure
+
+All source code lives under `reference/src/`. The directory is organized into layered modules:
+
+| Directory | Description |
+|---|---|
+| `client/` | Public API headers (`sa.h`, `sa_crypto.h`, `sa_key.h`, `sa_svp.h`, `sa_cenc.h`, etc.) and the client library. This is what applications include to use SecAPI. |
+| `clientimpl/` | Client implementation that bridges the public API to the Trusted Application layer. Marshals/unmarshals data between REE client code and the TA. |
+| `taimpl/` | Core Trusted Application implementation containing all cryptographic logic, key management, cipher/MAC/digest stores, and protocol-specific encryption (Netflix, CENC). Pluggable crypto backends live under `taimpl/src/internal/providers/` — mbedTLS, OpenSSL, libdecaf, ed25519-donna, and curve25519-donna. |
+| `util/` | Shared utility library with **no crypto dependency**. Provides logging, digest helpers, and key-rights management used by all other modules. |
+| `util_mbedtls/` | mbedTLS-specific utilities: PKCS8/PKCS12 key format parsing, digest wrappers, hardware RNG abstraction, and mbedTLS test helpers. Built when the mbedTLS backend is selected. |
+| `util_openssl/` | OpenSSL-specific utilities: PKCS8/PKCS12 key format parsing, digest mechanism abstraction, and OpenSSL test helpers. Built when the OpenSSL backend is selected. |
+
+```
+reference/src/
+├── client/          # Public API (sa.h, sa_crypto.h, sa_key.h, …)
+├── clientimpl/      # REE ↔ TA bridge
+├── taimpl/          # TA core + crypto providers
+│   ├── include/     #   TA interface headers
+│   ├── src/
+│   │   ├── internal/        # Crypto logic (symmetric, rsa, ec, kdf, cenc, …)
+│   │   │   └── providers/   # mbedtls/, openssl/, decaf/, ed25519-donna/, curve25519-donna/
+│   │   └── porting/         # Platform-specific (init, rand, svp, transport)
+│   └── test/        #   taimpltest
+├── util/            # Logging, digest helpers (no crypto dep)
+├── util_mbedtls/    # mbedTLS utilities + util_mbedtls_test
+└── util_openssl/    # OpenSSL utilities + util_openssl_test
 ```
 
 ## Sample Use Cases
